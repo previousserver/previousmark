@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="SshConfigs">
+    <configs>
+      <sshConfig authType="PASSWORD" host="stud.if.ktu.lt" id="ea741199-3022-47b3-87e0-6b56b3a0ea51" port="22" nameFormat="DESCRIPTIVE" username="leomin" />
+    </configs>
+  </component>
+</project>

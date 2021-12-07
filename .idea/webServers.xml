@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="WebServers">
+    <option name="servers">
+      <webServer id="0508ef9b-b984-493e-b679-c27df639e87b" name="KTU" url="https://stud.if.ktu.lt">
+        <fileTransfer rootFolder="/home/leomin" accessType="SFTP" host="stud.if.ktu.lt" port="22" sshConfigId="ea741199-3022-47b3-87e0-6b56b3a0ea51" sshConfig="leomin@stud.if.ktu.lt:22 password">
+          <advancedOptions>
+            <advancedOptions dataProtectionLevel="Private" keepAliveTimeout="0" passiveMode="true" shareSSLContext="true" />
+          </advancedOptions>
+        </fileTransfer>
+      </webServer>
+    </option>
+  </component>
+</project>
