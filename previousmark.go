@@ -29,8 +29,8 @@ func main() {
 	router.GET("/api/benchmarks/:bid/comments", getBenchmarkComments(db, dbS))
 	router.GET("/api/benchmarks/:bid/comments?page=&per_page=", getBenchmarkComments(db, dbS))
 	router.GET("/api/benchmarks/:bid/comments/:cid", getBenchmarkComment(db, dbS))
-	router.POST("/api/benchmarks/:bid/comments", postBenchmarkComment(db, dbS,true, true))
-	router.DELETE("/api/benchmarks/:bid/comments/:cid", delBenchmarkComment(db, dbS,true, true, true))
+	router.POST("/api/benchmarks/:bid/comments", postBenchmarkComment(db, dbS))
+	router.DELETE("/api/benchmarks/:bid/comments/:cid", delBenchmarkComment(db, dbS))
 
 	// Submissions and comments
 	router.GET("/api/submissions", getSubmissions(db, dbS))
@@ -38,12 +38,12 @@ func main() {
 	router.GET("/api/submissions/:sid", getSubmission(db, dbS))
 	router.POST("/api/submissions", postSubmission(db, dbS, true, true))
 	router.PATCH("/api/submissions/:sid", updSubmission(db, dbS, true, true))
-	router.DELETE("/api/submissions/:sid", delSubmission(db, dbS,true, true, true))
+	router.DELETE("/api/submissions/:sid", delSubmission(db, dbS, true, true, true))
 	router.GET("/api/submissions/:sid/comments", getSubmissionComments(db, dbS))
 	router.GET("/api/submissions/:sid/comments?page=&per_page=", getSubmissionComments(db, dbS))
 	router.GET("/api/submissions/:sid/comments/:cid", getSubmissionComment(db, dbS))
-	router.POST("/api/submissions/:sid/comments", postSubmissionComment(db, dbS,true, true))
-	router.DELETE("/api/submissions/:sid/comments/:cid", delSubmissionComment(db, dbS,true, true, true))
+	router.POST("/api/submissions/:sid/comments", postSubmissionComment(db, dbS, true, true))
+	router.DELETE("/api/submissions/:sid/comments/:cid", delSubmissionComment(db, dbS, true, true, true))
 
 	// Users
 	router.POST("/api/auth", loginUser(db, dbS))
