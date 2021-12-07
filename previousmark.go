@@ -36,7 +36,7 @@ func main() {
 	router.GET("/api/submissions", getSubmissions(db, dbS))
 	router.GET("/api/submissions?id=&bid=&page=&per_page=", getSubmissions(db, dbS))
 	router.GET("/api/submissions/:sid", getSubmission(db, dbS))
-	router.POST("/api/submissions", postSubmission(db, dbS, true, true))
+	router.POST("/api/submissions", postSubmission(db, dbS))
 	router.PATCH("/api/submissions/:sid", updSubmission(db, dbS, true, true))
 	router.DELETE("/api/submissions/:sid", delSubmission(db, dbS, true, true, true))
 	router.GET("/api/submissions/:sid/comments", getSubmissionComments(db, dbS))

@@ -466,17 +466,19 @@ func getSubmissions(db *sql.DB, dbS *sql.DB) gin.HandlerFunc {
 			tokenT := c.GetHeader("Authorization")[len("Bearer"):]
 			page := c.DefaultQuery("page", "")
 			perPage := c.DefaultQuery("per_page", "")
+			var isMod = false
 			var resource submissions
 			var msgM msg
 			var tokenT2 = tokenT
 			var err error
 			if idMine != "" && tokenT != "" {
 				tokenT2, msgM, _ = dbSQueryVerifyToken(dbS, tokenT, false, idMine)
+				isMod = dbQueryIsMod(db, idMine)
 			}
 			if (page != "") != (perPage != "") {
 				c.JSON(http.StatusBadRequest, token{Token: tokenT2, Status: badReq400ErrMsg})
 			} else {
-				resource, err = dbQueryGetSubmissions(db, id, bid)
+				resource, err = dbQueryGetSubmissions(db, id, bid, isMod)
 				if err != nil {
 					c.JSON(http.StatusInternalServerError, token{Token: tokenT2, Status: dbErr500ErrMsg})
 				} else {
@@ -517,19 +519,30 @@ func getSubmission(db *sql.DB, dbS *sql.DB) gin.HandlerFunc {
 			c.JSON(http.StatusInternalServerError, dbErr500ErrMsg)
 		} else {
 			sid := c.Param("sid")
-			resource, err := dbQueryGetSubmission(db, sid)
+			idMine := c.GetHeader("x-id")
+			tokenT := c.GetHeader("Authorization")[len("Bearer"):]
+			var resource submission
+			var err error
+			var msgM msg
+			var tokenT2 = tokenT
+			resource, err = dbQueryGetSubmission(db, sid)
+			resource.NewToken = token{Token: tokenT2, Status: msgM}
 			if err != nil {
-				c.JSON(http.StatusInternalServerError, dbErr500ErrMsg)
+				c.JSON(http.StatusInternalServerError, token{tokenT2, dbErr500ErrMsg})
 			} else if resource.SID == "" {
-				c.JSON(http.StatusNotFound, notFound404ErrMsg)
+				c.JSON(http.StatusNotFound, token{tokenT2, notFound404ErrMsg})
 			} else {
+				if idMine != "" && tokenT != "" {
+					tokenT2, msgM, _ = dbSQueryVerifyToken(dbS, tokenT, false, idMine)
+					resource.NewToken = token{Token: tokenT2, Status: msgM}
+				}
 				c.JSON(http.StatusOK, resource)
 			}
 		}
 	}
 }
 
-func postSubmission(db *sql.DB, dbS *sql.DB, isLoggedIn bool, existsBenchmark bool) gin.HandlerFunc {
+func postSubmission(db *sql.DB, dbS *sql.DB) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		if !isFulfillable(c, []string{"417", "406", "415", "401", "500", "422", "404", "201"}) {
 			c.JSON(http.StatusExpectationFailed, expFail417ErrMsg)
@@ -537,30 +550,48 @@ func postSubmission(db *sql.DB, dbS *sql.DB, isLoggedIn bool, existsBenchmark bo
 			c.JSON(http.StatusNotAcceptable, notAcc406ErrMsg)
 		} else if !isSupported(c, "application/json") {
 			c.JSON(http.StatusUnsupportedMediaType, notSupp415ErrMsg)
-		} else if !isLoggedIn {
-			c.JSON(http.StatusUnauthorized, notAuth401ErrMsg)
 		} else if db.Ping() != nil {
 			c.JSON(http.StatusInternalServerError, dbErr500ErrMsg)
 		} else {
+			idMine := c.GetHeader("x-id")
+			tokenT := c.GetHeader("Authorization")[len("Bearer"):]
 			body, err := c.GetRawData()
 			if err != nil {
-				c.JSON(http.StatusInternalServerError, reqErr500ErrMsg)
+				c.JSON(http.StatusInternalServerError, token{tokenT, reqErr500ErrMsg})
 			} else {
-				bid := c.Param("bid")
-				var entity submission
-				err = json.Unmarshal(body, &entity)
+				var newResource submission
+				err = json.Unmarshal(body, &newResource)
 				if err != nil {
-					c.JSON(http.StatusUnprocessableEntity, unproc422ErrMsg)
-				} else if !existsBenchmark {
-					c.JSON(http.StatusNotFound, notFound404ErrMsg)
+					c.JSON(http.StatusUnprocessableEntity, token{tokenT, unproc422ErrMsg})
 				} else {
-					// todo: benchmark{} explanation
-					resource, err := dbQueryPostSubmission(db, entity.Result, entity.Screenshot, benchmark{BID: bid})
-					if err != nil {
-						c.JSON(http.StatusInternalServerError, dbErr500ErrMsg)
+					tokenT2, msgM, _ := dbSQueryVerifyToken(dbS, tokenT, false, idMine)
+					if msgM.Body == notAuth401ErrMsg.Body {
+						c.Header("WWW-Authenticate", "Bearer")
+						c.JSON(http.StatusUnauthorized, msgM)
+					} else if msgM.Body == etcErr500ErrMsg.Body || msgM.Body == dbErr500ErrMsg.Body {
+						c.JSON(http.StatusInternalServerError, token{tokenT, msgM})
+					} else if idMine != "" && tokenT != "" {
+						resource, msg2, err2 := dbQueryPostSubmission(db, newResource.Screenshot, benchmark{BID: newResource.Benchmark.BID}, idMine)
+						if msg2.Body == dbErr500ErrMsg.Body {
+							c.JSON(http.StatusInternalServerError, token{tokenT2, dbErr500ErrMsg})
+						} else if err2 != nil {
+							c.JSON(http.StatusInternalServerError, token{tokenT2, etcErr500ErrMsg})
+						} else {
+							u, err3 := dbQueryGetUser(db, resource.User.ID, "")
+							if err3 == nil {
+								resource.User = u
+							}
+							b, err4 := dbQueryGetBenchmark(db, newResource.Benchmark.BID)
+							if err4 == nil {
+								resource.Benchmark = b
+							}
+							resource.NewToken = token{tokenT2, msgM}
+							c.Header("Location", path+"/api/submissions/"+resource.SID)
+							c.JSON(http.StatusCreated, resource)
+						}
 					} else {
-						c.Header("Location", "localhost:8080/submissions/"+resource.SID)
-						c.JSON(http.StatusCreated, resource)
+						c.Header("WWW-Authenticate", "Bearer")
+						c.JSON(http.StatusUnauthorized, notAuth401ErrMsg)
 					}
 				}
 			}
