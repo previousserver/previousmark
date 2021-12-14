@@ -880,7 +880,7 @@ func delSubmissionComment(db *sql.DB, dbS *sql.DB) gin.HandlerFunc {
 				} else if sc.CID == "" {
 					c.JSON(http.StatusNotFound, token{tokenT2, notFound404ErrMsg})
 				} else if isMod || sc.User.ID == idMine {
-					err = dbQueryDeleteBenchmarkComment(db, sid, cid)
+					err = dbQueryDeleteSubmissionComment(db, sid, cid)
 					if err != nil {
 						c.JSON(http.StatusInternalServerError, token{tokenT2, dbErr500ErrMsg})
 					} else {
