@@ -156,7 +156,7 @@ func postBenchmark(db *sql.DB, dbS *sql.DB) gin.HandlerFunc {
 
 func updBenchmark(db *sql.DB, dbS *sql.DB) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		if !isFulfillable(c, []string{"417", "406", "415", "401", "403", "500", "422", "404", "200"}) {
+		if !isFulfillable(c, []string{"417", "406", "415", "401", "400", "403", "500", "422", "404", "200"}) {
 			c.JSON(http.StatusExpectationFailed, expFail417ErrMsg)
 		} else if !isAcceptable(c, "application/json") {
 			c.JSON(http.StatusNotAcceptable, notAcc406ErrMsg)
@@ -202,7 +202,11 @@ func updBenchmark(db *sql.DB, dbS *sql.DB) gin.HandlerFunc {
 								resource, msgM, err3 = dbQueryUpdateBenchmark(db, idMine, bid, resource.Title, resource.Icon, resource.Description, resource.Metric, resource.Rating, resource.RatingCount)
 							}
 							resource.NewToken = token{Token: tokenT2, Status: msgM}
-							if err3 != nil {
+							if msgM.Body == notFound404ErrMsg.Body {
+								c.JSON(http.StatusNotFound, token{tokenT, msgM})
+							} else if msgM.Body == badReq400ErrMsg.Body {
+								c.JSON(http.StatusBadRequest, token{tokenT, msgM})
+							} else if err3 != nil {
 								c.JSON(http.StatusInternalServerError, resource)
 							} else {
 								c.JSON(http.StatusOK, resource)
@@ -352,7 +356,7 @@ func getBenchmarkComment(db *sql.DB, dbS *sql.DB) gin.HandlerFunc {
 
 func postBenchmarkComment(db *sql.DB, dbS *sql.DB) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		if !isFulfillable(c, []string{"417", "406", "415", "401", "500", "400", "422", "404", "201"}) {
+		if !isFulfillable(c, []string{"417", "406", "415", "401", "400", "500", "400", "422", "404", "201"}) {
 			c.JSON(http.StatusExpectationFailed, expFail417ErrMsg)
 		} else if !isAcceptable(c, "application/json") {
 			c.JSON(http.StatusNotAcceptable, notAcc406ErrMsg)
@@ -383,6 +387,10 @@ func postBenchmarkComment(db *sql.DB, dbS *sql.DB) gin.HandlerFunc {
 						resource, msg2, err2 := dbQueryPostBenchmarkComment(db, bid, newResource.Body, idMine)
 						if msg2.Body == dbErr500ErrMsg.Body {
 							c.JSON(http.StatusInternalServerError, token{tokenT2, dbErr500ErrMsg})
+						} else if msg2.Body == badReq400ErrMsg.Body {
+							c.JSON(http.StatusInternalServerError, token{tokenT2, dbErr500ErrMsg})
+						} else if msg2.Body == notFound404ErrMsg.Body {
+							c.JSON(http.StatusNotFound, token{tokenT2, dbErr500ErrMsg})
 						} else if err2 != nil {
 							c.JSON(http.StatusInternalServerError, token{tokenT2, etcErr500ErrMsg})
 						} else {
@@ -544,7 +552,7 @@ func getSubmission(db *sql.DB, dbS *sql.DB) gin.HandlerFunc {
 
 func postSubmission(db *sql.DB, dbS *sql.DB) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		if !isFulfillable(c, []string{"417", "406", "415", "401", "500", "422", "404", "201"}) {
+		if !isFulfillable(c, []string{"417", "406", "415", "401", "400", "500", "422", "404", "201"}) {
 			c.JSON(http.StatusExpectationFailed, expFail417ErrMsg)
 		} else if !isAcceptable(c, "application/json") {
 			c.JSON(http.StatusNotAcceptable, notAcc406ErrMsg)
@@ -574,6 +582,10 @@ func postSubmission(db *sql.DB, dbS *sql.DB) gin.HandlerFunc {
 						resource, msg2, err2 := dbQueryPostSubmission(db, newResource.Screenshot, benchmark{BID: newResource.Benchmark.BID}, idMine)
 						if msg2.Body == dbErr500ErrMsg.Body {
 							c.JSON(http.StatusInternalServerError, token{tokenT2, dbErr500ErrMsg})
+						} else if msg2.Body == badReq400ErrMsg.Body {
+							c.JSON(http.StatusBadRequest, token{tokenT2, dbErr500ErrMsg})
+						} else if msg2.Body == notFound404ErrMsg.Body {
+							c.JSON(http.StatusNotFound, token{tokenT2, dbErr500ErrMsg})
 						} else if err2 != nil {
 							c.JSON(http.StatusInternalServerError, token{tokenT2, etcErr500ErrMsg})
 						} else {
@@ -601,7 +613,7 @@ func postSubmission(db *sql.DB, dbS *sql.DB) gin.HandlerFunc {
 
 func updSubmission(db *sql.DB, dbS *sql.DB) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		if !isFulfillable(c, []string{"417", "406", "415", "401", "500", "422", "404", "200"}) {
+		if !isFulfillable(c, []string{"417", "406", "415", "401", "400", "500", "422", "404", "200"}) {
 			c.JSON(http.StatusExpectationFailed, expFail417ErrMsg)
 		} else if !isAcceptable(c, "application/json") {
 			c.JSON(http.StatusNotAcceptable, notAcc406ErrMsg)
@@ -649,7 +661,11 @@ func updSubmission(db *sql.DB, dbS *sql.DB) gin.HandlerFunc {
 								resource, msgM, err3 = dbQueryUpdateSubmission(db, idMine, resource.SID, resource.Result, newResource.Rating, newResource.RatingCount, resource.IsVerified)
 							}
 							resource.NewToken = token{Token: tokenT2, Status: msgM}
-							if err3 != nil {
+							if msgM.Body == notFound404ErrMsg.Body {
+								c.JSON(http.StatusNotFound, token{tokenT, msgM})
+							} else if msgM.Body == badReq400ErrMsg.Body {
+								c.JSON(http.StatusBadRequest, token{tokenT, msgM})
+							} else if err3 != nil {
 								c.JSON(http.StatusInternalServerError, resource)
 							} else {
 								c.JSON(http.StatusOK, resource)
@@ -799,7 +815,7 @@ func getSubmissionComment(db *sql.DB, dbS *sql.DB) gin.HandlerFunc {
 
 func postSubmissionComment(db *sql.DB, dbS *sql.DB) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		if !isFulfillable(c, []string{"417", "406", "415", "401", "500", "400", "422", "404", "201"}) {
+		if !isFulfillable(c, []string{"417", "406", "415", "401", "400", "500", "400", "422", "404", "201"}) {
 			c.JSON(http.StatusExpectationFailed, expFail417ErrMsg)
 		} else if !isAcceptable(c, "application/json") {
 			c.JSON(http.StatusNotAcceptable, notAcc406ErrMsg)
@@ -830,6 +846,10 @@ func postSubmissionComment(db *sql.DB, dbS *sql.DB) gin.HandlerFunc {
 						resource, msg2, err2 := dbQueryPostSubmissionComment(db, sid, newResource.Body, idMine)
 						if msg2.Body == dbErr500ErrMsg.Body {
 							c.JSON(http.StatusInternalServerError, token{tokenT2, dbErr500ErrMsg})
+						} else if msg2.Body == badReq400ErrMsg.Body {
+							c.JSON(http.StatusInternalServerError, token{tokenT2, dbErr500ErrMsg})
+						} else if msg2.Body == notFound404ErrMsg.Body {
+							c.JSON(http.StatusNotFound, token{tokenT2, dbErr500ErrMsg})
 						} else if err2 != nil {
 							c.JSON(http.StatusInternalServerError, token{tokenT2, etcErr500ErrMsg})
 						} else {
