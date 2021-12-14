@@ -42,8 +42,8 @@ func main() {
 	router.GET("/api/submissions/:sid/comments", getSubmissionComments(db, dbS))
 	router.GET("/api/submissions/:sid/comments?page=&per_page=", getSubmissionComments(db, dbS))
 	router.GET("/api/submissions/:sid/comments/:cid", getSubmissionComment(db, dbS))
-	router.POST("/api/submissions/:sid/comments", postSubmissionComment(db, dbS, true, true))
-	router.DELETE("/api/submissions/:sid/comments/:cid", delSubmissionComment(db, dbS, true, true, true))
+	router.POST("/api/submissions/:sid/comments", postSubmissionComment(db, dbS))
+	router.DELETE("/api/submissions/:sid/comments/:cid", delSubmissionComment(db, dbS))
 
 	// Users
 	router.POST("/api/auth", loginUser(db, dbS))

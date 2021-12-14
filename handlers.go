@@ -716,13 +716,48 @@ func getSubmissionComments(db *sql.DB, dbS *sql.DB) gin.HandlerFunc {
 			c.JSON(http.StatusInternalServerError, dbErr500ErrMsg)
 		} else {
 			sid := c.Param("sid")
-			resource, err := dbQueryGetSubmissionComments(db, sid)
-			if err != nil {
-				c.JSON(http.StatusInternalServerError, dbErr500ErrMsg)
-			} else if resource.Submission.SID == "" {
-				c.JSON(http.StatusNotFound, notFound404ErrMsg)
+			idMine := c.GetHeader("x-id")
+			tokenT := c.GetHeader("Authorization")[len("Bearer"):]
+			page := c.DefaultQuery("page", "")
+			perPage := c.DefaultQuery("per_page", "")
+			var resource submissionComments
+			var msgM msg
+			var tokenT2 = tokenT
+			var err error
+			if idMine != "" && tokenT != "" {
+				tokenT2, msgM, _ = dbSQueryVerifyToken(dbS, tokenT, false, idMine)
+			}
+			if (page != "") != (perPage != "") {
+				c.JSON(http.StatusBadRequest, token{Token: tokenT2, Status: badReq400ErrMsg})
 			} else {
-				c.JSON(http.StatusOK, resource)
+				resource, err = dbQueryGetSubmissionComments(db, sid)
+				if err != nil {
+					c.JSON(http.StatusInternalServerError, token{Token: tokenT2, Status: dbErr500ErrMsg})
+				} else if resource.Submission.SID == "" {
+					c.JSON(http.StatusNotFound, token{tokenT2, notFound404ErrMsg})
+				} else {
+					if page != "" && perPage != "" {
+						pageInt, err3 := strconv.Atoi(page)
+						perPageInt, err4 := strconv.Atoi(perPage)
+						if err3 == nil &&
+							err4 == nil &&
+							pageInt != 0 &&
+							perPageInt != 0 &&
+							len(resource.SubmissionComments) > 0 &&
+							(pageInt-1)*perPageInt >= 0 {
+							end := int(math.Min(float64(pageInt*perPageInt-1), float64(len(resource.SubmissionComments)-1)))
+							resource.SubmissionComments = resource.SubmissionComments[((pageInt - 1) * perPageInt):end]
+							if (pageInt-2)*perPageInt >= 0 {
+								resource.Previous = path + "/api/submissions/" + sid + "/comments?page=" + strconv.Itoa(pageInt-1) + "&per_page=" + perPage
+							}
+							if pageInt*perPageInt < len(resource.SubmissionComments) {
+								resource.Next = path + "/api/submissions/" + sid + "/comments?page=" + strconv.Itoa(pageInt-1) + "&per_page=" + perPage
+							}
+						}
+					}
+					resource.NewToken = token{Token: tokenT2, Status: msgM}
+					c.JSON(http.StatusOK, resource)
+				}
 			}
 		}
 	}
@@ -739,49 +774,76 @@ func getSubmissionComment(db *sql.DB, dbS *sql.DB) gin.HandlerFunc {
 		} else {
 			sid := c.Param("sid")
 			cid := c.Param("cid")
-			resource, err := dbQueryGetSubmissionComment(db, sid, cid)
+			idMine := c.GetHeader("x-id")
+			tokenT := c.GetHeader("Authorization")[len("Bearer"):]
+			var resource submissionComment
+			var err error
+			var msgM msg
+			var tokenT2 = tokenT
+			resource, err = dbQueryGetSubmissionComment(db, sid, cid)
+			resource.NewToken = token{Token: tokenT2, Status: msgM}
 			if err != nil {
-				c.JSON(http.StatusInternalServerError, dbErr500ErrMsg)
-			} else if resource.CID == "" {
-				c.JSON(http.StatusNotFound, notFound404ErrMsg)
+				c.JSON(http.StatusInternalServerError, token{tokenT2, dbErr500ErrMsg})
+			} else if resource.Submission.SID == "" {
+				c.JSON(http.StatusNotFound, token{tokenT2, notFound404ErrMsg})
 			} else {
+				if idMine != "" && tokenT != "" {
+					tokenT2, msgM, _ = dbSQueryVerifyToken(dbS, tokenT, false, idMine)
+					resource.NewToken = token{Token: tokenT2, Status: msgM}
+				}
 				c.JSON(http.StatusOK, resource)
 			}
 		}
 	}
 }
 
-func postSubmissionComment(db *sql.DB, dbS *sql.DB, isLoggedIn bool, existsSubmission bool) gin.HandlerFunc {
+func postSubmissionComment(db *sql.DB, dbS *sql.DB) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		if !isFulfillable(c, []string{"417", "406", "415", "401", "500", "422", "404", "201"}) {
+		if !isFulfillable(c, []string{"417", "406", "415", "401", "500", "400", "422", "404", "201"}) {
 			c.JSON(http.StatusExpectationFailed, expFail417ErrMsg)
 		} else if !isAcceptable(c, "application/json") {
 			c.JSON(http.StatusNotAcceptable, notAcc406ErrMsg)
 		} else if !isSupported(c, "application/json") {
 			c.JSON(http.StatusUnsupportedMediaType, notSupp415ErrMsg)
-		} else if !isLoggedIn {
-			c.JSON(http.StatusUnauthorized, notAuth401ErrMsg)
 		} else if db.Ping() != nil {
 			c.JSON(http.StatusInternalServerError, dbErr500ErrMsg)
 		} else {
+			sid := c.Param("sid")
+			idMine := c.GetHeader("x-id")
+			tokenT := c.GetHeader("Authorization")[len("Bearer"):]
 			body, err := c.GetRawData()
 			if err != nil {
 				c.JSON(http.StatusInternalServerError, reqErr500ErrMsg)
 			} else {
-				sid := c.Param("sid")
-				var entity submissionComment
-				err = json.Unmarshal(body, &entity)
+				var newResource submissionComment
+				err = json.Unmarshal(body, &newResource)
 				if err != nil {
 					c.JSON(http.StatusUnprocessableEntity, unproc422ErrMsg)
-				} else if !existsSubmission {
-					c.JSON(http.StatusNotFound, notFound404ErrMsg)
 				} else {
-					resource, err := dbQueryPostSubmissionComment(db, sid, entity.Body, entity.User)
-					if err != nil {
-						c.JSON(http.StatusInternalServerError, dbErr500ErrMsg)
+					tokenT2, msgM, _ := dbSQueryVerifyToken(dbS, tokenT, false, idMine)
+					if msgM.Body == notAuth401ErrMsg.Body {
+						c.Header("WWW-Authenticate", "Bearer")
+						c.JSON(http.StatusUnauthorized, msgM)
+					} else if msgM.Body == etcErr500ErrMsg.Body || msgM.Body == dbErr500ErrMsg.Body {
+						c.JSON(http.StatusInternalServerError, token{tokenT, msgM})
+					} else if idMine != "" && tokenT != "" {
+						resource, msg2, err2 := dbQueryPostSubmissionComment(db, sid, newResource.Body, idMine)
+						if msg2.Body == dbErr500ErrMsg.Body {
+							c.JSON(http.StatusInternalServerError, token{tokenT2, dbErr500ErrMsg})
+						} else if err2 != nil {
+							c.JSON(http.StatusInternalServerError, token{tokenT2, etcErr500ErrMsg})
+						} else {
+							u, err3 := dbQueryGetUser(db, resource.User.ID, "")
+							if err3 == nil {
+								resource.User = u
+							}
+							resource.NewToken = token{tokenT2, msgM}
+							c.Header("Location", path+"/api/submissions/"+sid+"/comments/"+resource.CID)
+							c.JSON(http.StatusCreated, resource)
+						}
 					} else {
-						c.Header("Location", "localhost:8080/submissions/"+entity.Submission.SID+"/comments/"+resource.CID)
-						c.JSON(http.StatusCreated, resource)
+						c.Header("WWW-Authenticate", "Bearer")
+						c.JSON(http.StatusUnauthorized, notAuth401ErrMsg)
 					}
 				}
 			}
@@ -789,7 +851,7 @@ func postSubmissionComment(db *sql.DB, dbS *sql.DB, isLoggedIn bool, existsSubmi
 	}
 }
 
-func delSubmissionComment(db *sql.DB, dbS *sql.DB, isLoggedIn bool, isAuthorizedAuthorMod bool, exists bool) gin.HandlerFunc {
+func delSubmissionComment(db *sql.DB, dbS *sql.DB) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		if !isFulfillable(c, []string{"417", "406", "415", "401", "403", "500", "404", "204"}) {
 			c.JSON(http.StatusExpectationFailed, expFail417ErrMsg)
@@ -797,24 +859,40 @@ func delSubmissionComment(db *sql.DB, dbS *sql.DB, isLoggedIn bool, isAuthorized
 			c.JSON(http.StatusNotAcceptable, notAcc406ErrMsg)
 		} else if !isSupported(c, "application/json") {
 			c.JSON(http.StatusUnsupportedMediaType, notSupp415ErrMsg)
-		} else if !isLoggedIn {
-			c.JSON(http.StatusUnauthorized, notAuth401ErrMsg)
-		} else if !isAuthorizedAuthorMod {
-			c.JSON(http.StatusForbidden, noPerms403ErrMsg)
 		} else if db.Ping() != nil {
 			c.JSON(http.StatusInternalServerError, dbErr500ErrMsg)
 		} else {
 			sid := c.Param("sid")
 			cid := c.Param("cid")
-			if !exists {
-				c.JSON(http.StatusNotFound, notFound404ErrMsg)
-			} else {
-				err := dbQueryDeleteSubmissionComment(db, sid, cid)
+			idMine := c.GetHeader("x-id")
+			tokenT := c.GetHeader("Authorization")[len("Bearer"):]
+			tokenT2, msgM, _ := dbSQueryVerifyToken(dbS, tokenT, false, idMine)
+			isMod := dbQueryIsMod(db, idMine)
+			if msgM.Body == notAuth401ErrMsg.Body {
+				c.Header("WWW-Authenticate", "Bearer")
+				c.JSON(http.StatusUnauthorized, msgM)
+			} else if msgM.Body == etcErr500ErrMsg.Body || msgM.Body == dbErr500ErrMsg.Body {
+				c.JSON(http.StatusInternalServerError, token{tokenT, msgM})
+			} else if idMine != "" && tokenT != "" {
+				sc, err := dbQueryGetSubmissionComment(db, sid, cid)
 				if err != nil {
-					c.JSON(http.StatusInternalServerError, dbErr500ErrMsg)
+					c.JSON(http.StatusInternalServerError, token{tokenT2, dbErr500ErrMsg})
+				} else if sc.CID == "" {
+					c.JSON(http.StatusNotFound, token{tokenT2, notFound404ErrMsg})
+				} else if isMod || sc.User.ID == idMine {
+					err = dbQueryDeleteBenchmarkComment(db, sid, cid)
+					if err != nil {
+						c.JSON(http.StatusInternalServerError, token{tokenT2, dbErr500ErrMsg})
+					} else {
+						c.Header("x-token", tokenT2)
+						c.JSON(http.StatusNoContent, nil)
+					}
 				} else {
-					c.JSON(http.StatusNoContent, noCont204Msg)
+					c.JSON(http.StatusForbidden, token{Token: tokenT2, Status: noPerms403ErrMsg})
 				}
+			} else {
+				c.Header("WWW-Authenticate", "Bearer")
+				c.JSON(http.StatusUnauthorized, notAuth401ErrMsg)
 			}
 		}
 	}
