@@ -3,6 +3,7 @@ package main
 import (
 	"database/sql"
 	"fmt"
+	_ "lib/pq"
 	"strconv"
 )
 
@@ -274,7 +275,7 @@ func dbQueryGetSubmissions(db *sql.DB, id string, bid string, showAll bool) (sub
 	idJ, err := strconv.Atoi(bid)
 	idI, err2 := strconv.Atoi(id)
 	if err != nil {
-		u, err4 = dbQueryGetUser(db, id, "")
+		u, err4 = dbQueryGetUser(db, id, true)
 		if err4 == nil {
 			ss.User = u
 		}
@@ -368,7 +369,7 @@ func dbQueryGetSubmission(db *sql.DB, sid string) (submission, error) {
 	if err4 == nil {
 		s.Benchmark = b
 	}
-	u, err5 := dbQueryGetUser(db, s.User.ID, "")
+	u, err5 := dbQueryGetUser(db, s.User.ID, true)
 	if err5 == nil {
 		s.User = u
 	}
@@ -599,19 +600,27 @@ func dbQueryGetUsers(db *sql.DB, showAll bool) (users, error) {
 	return us, nil
 }
 
-func dbQueryGetUser(db *sql.DB, id string, nickname string) (user, error) {
-	idI, err := strconv.Atoi(id)
-	if err != nil {
+func dbQueryGetUser(db *sql.DB, str string, isId bool) (user, error) {
+	idI, err := strconv.Atoi(str)
+	if err != nil && isId {
 		return user{}, err
 	}
-	row, err2 := db.Query(`
+	var row *sql.Rows
+	if isId {
+		row, err = db.Query(`
 		SELECT id, nickname, avatar, is_banned, is_verified, is_mod
 		FROM users
-		WHERE id = $1 OR nickname = $2`, idI, nickname)
+		WHERE id = $1`, idI)
+	} else {
+		row, err = db.Query(`
+		SELECT id, nickname, avatar, is_banned, is_verified, is_mod
+		FROM users
+		WHERE nickname = $1`, str)
+	}
 	if row == nil {
 		return user{}, nil
 	}
-	if err2 != nil {
+	if err != nil {
 		return user{}, err
 	}
 	var u user

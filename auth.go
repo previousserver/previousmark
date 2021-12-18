@@ -11,7 +11,7 @@ import (
 )
 
 const (
-	charset = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
+	charset    = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
 	secretSize = 16
 	refreshMin = 15
 )
@@ -45,7 +45,7 @@ func dbSQueryCheckSecretLogin(dbS *sql.DB, id string) (string, msg, error) {
 }
 
 func dbSQuerySendAndRefreshSecret(dbS *sql.DB, id string) (string, msg, error) {
-	secret, err := dbSQueryRefreshSecret(dbS, id, false,0)
+	secret, err := dbSQueryRefreshSecret(dbS, id, false, 0)
 	if err != nil {
 		return "", dbErr500ErrMsg, err
 	}
@@ -59,7 +59,7 @@ func dbSQuerySendAndRefreshSecret(dbS *sql.DB, id string) (string, msg, error) {
 	go func() {
 		_, _ = dbSQueryRefreshSecret(dbS, id, false, refreshMin)
 	}()
-	return tokenT, msg{ "Successfully refreshed secret" }, nil
+	return tokenT, msg{"Successfully refreshed secret"}, nil
 }
 
 func dbSQueryRefreshSecret(dbS *sql.DB, id string, nullify bool, sleep int) (string, error) {
@@ -128,7 +128,7 @@ func dbSQueryVerifyToken(dbS *sql.DB, token string, nullify bool, id string) (st
 	return token, notAuth401ErrMsg, nil
 }
 
-func dbQueryIsMod (db *sql.DB, id string) bool {
+func dbQueryIsMod(db *sql.DB, id string) bool {
 	i, err := strconv.Atoi(id)
 	if err != nil {
 		return false
@@ -157,7 +157,7 @@ func dbQueryLoginUser(nickname string, password string, db *sql.DB, dbS *sql.DB)
 	if nickN != nickname {
 		return "", notAuth401ErrMsg, nil
 	}
-	userU, err2 := dbQueryGetUser(db, "", nickN)
+	userU, err2 := dbQueryGetUser(db, nickN, false)
 	if err2 != nil {
 		return "", dbErr500ErrMsg, err2
 	}

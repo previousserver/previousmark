@@ -15,7 +15,6 @@ func main() {
 	if err != nil || err2 != nil {
 		fmt.Println("Error connecting to the database")
 	}
-	_ = dbS.Ping()
 
 	router := gin.Default()
 

@@ -21,7 +21,10 @@ func getBenchmarks(db *sql.DB, dbS *sql.DB) gin.HandlerFunc {
 			c.JSON(http.StatusInternalServerError, dbErr500ErrMsg)
 		} else {
 			idMine := c.GetHeader("x-id")
-			tokenT := c.GetHeader("Authorization")[len("Bearer"):]
+			tokenT := c.GetHeader("Authorization")
+			if tokenT != "" {
+				tokenT = tokenT[len("Bearer"):]
+			}
 			page := c.DefaultQuery("page", "")
 			perPage := c.DefaultQuery("per_page", "")
 			var resource benchmarks
@@ -43,18 +46,22 @@ func getBenchmarks(db *sql.DB, dbS *sql.DB) gin.HandlerFunc {
 						perPageInt, err4 := strconv.Atoi(perPage)
 						if err3 == nil &&
 							err4 == nil &&
-							pageInt != 0 &&
-							perPageInt != 0 &&
+							pageInt > 0 &&
+							perPageInt > 0 &&
 							len(resource.Benchmarks) > 0 &&
-							(pageInt-1)*perPageInt >= 0 {
+							(pageInt-1)*perPageInt >= 0 &&
+							(pageInt-1)*perPageInt < len(resource.Benchmarks) {
 							end := int(math.Min(float64(pageInt*perPageInt-1), float64(len(resource.Benchmarks)-1)))
-							resource.Benchmarks = resource.Benchmarks[((pageInt - 1) * perPageInt):end]
+							l := len(resource.Benchmarks)
+							resource.Benchmarks = resource.Benchmarks[((pageInt - 1) * perPageInt):(end + 1)]
 							if (pageInt-2)*perPageInt >= 0 {
 								resource.Previous = path + "/api/benchmarks?page=" + strconv.Itoa(pageInt-1) + "&per_page=" + perPage
 							}
-							if pageInt*perPageInt < len(resource.Benchmarks) {
+							if pageInt*perPageInt < l {
 								resource.Next = path + "/api/benchmarks?page=" + strconv.Itoa(pageInt-1) + "&per_page=" + perPage
 							}
+						} else {
+							resource.Benchmarks = nil
 						}
 					}
 					resource.NewToken = token{Token: tokenT2, Status: msgM}
@@ -76,7 +83,10 @@ func getBenchmark(db *sql.DB, dbS *sql.DB) gin.HandlerFunc {
 		} else {
 			bid := c.Param("bid")
 			idMine := c.GetHeader("x-id")
-			tokenT := c.GetHeader("Authorization")[len("Bearer"):]
+			tokenT := c.GetHeader("Authorization")
+			if tokenT != "" {
+				tokenT = tokenT[len("Bearer"):]
+			}
 			var resource benchmark
 			var err error
 			var msgM msg
@@ -110,7 +120,10 @@ func postBenchmark(db *sql.DB, dbS *sql.DB) gin.HandlerFunc {
 			c.JSON(http.StatusInternalServerError, dbErr500ErrMsg)
 		} else {
 			idMine := c.GetHeader("x-id")
-			tokenT := c.GetHeader("Authorization")[len("Bearer"):]
+			tokenT := c.GetHeader("Authorization")
+			if tokenT != "" {
+				tokenT = tokenT[len("Bearer"):]
+			}
 			body, err := c.GetRawData()
 			if err != nil {
 				c.JSON(http.StatusInternalServerError, token{tokenT, reqErr500ErrMsg})
@@ -167,7 +180,10 @@ func updBenchmark(db *sql.DB, dbS *sql.DB) gin.HandlerFunc {
 		} else {
 			bid := c.Param("bid")
 			idMine := c.GetHeader("x-id")
-			tokenT := c.GetHeader("Authorization")[len("Bearer"):]
+			tokenT := c.GetHeader("Authorization")
+			if tokenT != "" {
+				tokenT = tokenT[len("Bearer"):]
+			}
 			var err error
 			body, err2 := c.GetRawData()
 			if err2 != nil {
@@ -235,7 +251,10 @@ func delBenchmark(db *sql.DB, dbS *sql.DB) gin.HandlerFunc {
 		} else {
 			bid := c.Param("bid")
 			idMine := c.GetHeader("x-id")
-			tokenT := c.GetHeader("Authorization")[len("Bearer"):]
+			tokenT := c.GetHeader("Authorization")
+			if tokenT != "" {
+				tokenT = tokenT[len("Bearer"):]
+			}
 			tokenT2, msgM, _ := dbSQueryVerifyToken(dbS, tokenT, false, idMine)
 			isMod := dbQueryIsMod(db, idMine)
 			if msgM.Body == notAuth401ErrMsg.Body {
@@ -274,7 +293,10 @@ func getBenchmarkComments(db *sql.DB, dbS *sql.DB) gin.HandlerFunc {
 		} else {
 			bid := c.Param("bid")
 			idMine := c.GetHeader("x-id")
-			tokenT := c.GetHeader("Authorization")[len("Bearer"):]
+			tokenT := c.GetHeader("Authorization")
+			if tokenT != "" {
+				tokenT = tokenT[len("Bearer"):]
+			}
 			page := c.DefaultQuery("page", "")
 			perPage := c.DefaultQuery("per_page", "")
 			var resource benchmarkComments
@@ -301,13 +323,15 @@ func getBenchmarkComments(db *sql.DB, dbS *sql.DB) gin.HandlerFunc {
 							pageInt != 0 &&
 							perPageInt != 0 &&
 							len(resource.BenchmarkComments) > 0 &&
-							(pageInt-1)*perPageInt >= 0 {
+							(pageInt-1)*perPageInt >= 0 &&
+							(pageInt-1)*perPageInt < len(resource.BenchmarkComments) {
 							end := int(math.Min(float64(pageInt*perPageInt-1), float64(len(resource.BenchmarkComments)-1)))
-							resource.BenchmarkComments = resource.BenchmarkComments[((pageInt - 1) * perPageInt):end]
+							l := len(resource.BenchmarkComments)
+							resource.BenchmarkComments = resource.BenchmarkComments[((pageInt - 1) * perPageInt):(end + 1)]
 							if (pageInt-2)*perPageInt >= 0 {
 								resource.Previous = path + "/api/benchmarks/" + bid + "/comments?page=" + strconv.Itoa(pageInt-1) + "&per_page=" + perPage
 							}
-							if pageInt*perPageInt < len(resource.BenchmarkComments) {
+							if pageInt*perPageInt < l {
 								resource.Next = path + "/api/benchmarks/" + bid + "/comments?page=" + strconv.Itoa(pageInt-1) + "&per_page=" + perPage
 							}
 						}
@@ -332,7 +356,10 @@ func getBenchmarkComment(db *sql.DB, dbS *sql.DB) gin.HandlerFunc {
 			bid := c.Param("bid")
 			cid := c.Param("cid")
 			idMine := c.GetHeader("x-id")
-			tokenT := c.GetHeader("Authorization")[len("Bearer"):]
+			tokenT := c.GetHeader("Authorization")
+			if tokenT != "" {
+				tokenT = tokenT[len("Bearer"):]
+			}
 			var resource benchmarkComment
 			var err error
 			var msgM msg
@@ -367,7 +394,10 @@ func postBenchmarkComment(db *sql.DB, dbS *sql.DB) gin.HandlerFunc {
 		} else {
 			bid := c.Param("bid")
 			idMine := c.GetHeader("x-id")
-			tokenT := c.GetHeader("Authorization")[len("Bearer"):]
+			tokenT := c.GetHeader("Authorization")
+			if tokenT != "" {
+				tokenT = tokenT[len("Bearer"):]
+			}
 			body, err := c.GetRawData()
 			if err != nil {
 				c.JSON(http.StatusInternalServerError, reqErr500ErrMsg)
@@ -394,7 +424,7 @@ func postBenchmarkComment(db *sql.DB, dbS *sql.DB) gin.HandlerFunc {
 						} else if err2 != nil {
 							c.JSON(http.StatusInternalServerError, token{tokenT2, etcErr500ErrMsg})
 						} else {
-							u, err3 := dbQueryGetUser(db, resource.User.ID, "")
+							u, err3 := dbQueryGetUser(db, resource.User.ID, true)
 							if err3 == nil {
 								resource.User = u
 							}
@@ -426,7 +456,10 @@ func delBenchmarkComment(db *sql.DB, dbS *sql.DB) gin.HandlerFunc {
 			bid := c.Param("bid")
 			cid := c.Param("cid")
 			idMine := c.GetHeader("x-id")
-			tokenT := c.GetHeader("Authorization")[len("Bearer"):]
+			tokenT := c.GetHeader("Authorization")
+			if tokenT != "" {
+				tokenT = tokenT[len("Bearer"):]
+			}
 			tokenT2, msgM, _ := dbSQueryVerifyToken(dbS, tokenT, false, idMine)
 			isMod := dbQueryIsMod(db, idMine)
 			if msgM.Body == notAuth401ErrMsg.Body {
@@ -471,7 +504,10 @@ func getSubmissions(db *sql.DB, dbS *sql.DB) gin.HandlerFunc {
 			id := c.DefaultQuery("id", "")
 			bid := c.DefaultQuery("bid", "")
 			idMine := c.GetHeader("x-id")
-			tokenT := c.GetHeader("Authorization")[len("Bearer"):]
+			tokenT := c.GetHeader("Authorization")
+			if tokenT != "" {
+				tokenT = tokenT[len("Bearer"):]
+			}
 			page := c.DefaultQuery("page", "")
 			perPage := c.DefaultQuery("per_page", "")
 			var isMod = false
@@ -498,13 +534,15 @@ func getSubmissions(db *sql.DB, dbS *sql.DB) gin.HandlerFunc {
 							pageInt != 0 &&
 							perPageInt != 0 &&
 							len(resource.Submissions) > 0 &&
-							(pageInt-1)*perPageInt >= 0 {
+							(pageInt-1)*perPageInt >= 0 &&
+							(pageInt-1)*perPageInt < len(resource.Submissions) {
 							end := int(math.Min(float64(pageInt*perPageInt-1), float64(len(resource.Submissions)-1)))
-							resource.Submissions = resource.Submissions[((pageInt - 1) * perPageInt):end]
+							l := len(resource.Submissions)
+							resource.Submissions = resource.Submissions[((pageInt - 1) * perPageInt):(end + 1)]
 							if (pageInt-2)*perPageInt >= 0 {
 								resource.Previous = path + "/api/submissions/?id=" + id + "&bid=" + bid + "&page=" + strconv.Itoa(pageInt+1) + "&per_page=" + perPage
 							}
-							if pageInt*perPageInt < len(resource.Submissions) {
+							if pageInt*perPageInt < l {
 								resource.Next = path + "/api/submissions/?id=" + id + "&bid=" + bid + "&page=" + strconv.Itoa(pageInt-1) + "&per_page=" + perPage
 							}
 						}
@@ -528,7 +566,10 @@ func getSubmission(db *sql.DB, dbS *sql.DB) gin.HandlerFunc {
 		} else {
 			sid := c.Param("sid")
 			idMine := c.GetHeader("x-id")
-			tokenT := c.GetHeader("Authorization")[len("Bearer"):]
+			tokenT := c.GetHeader("Authorization")
+			if tokenT != "" {
+				tokenT = tokenT[len("Bearer"):]
+			}
 			var resource submission
 			var err error
 			var msgM msg
@@ -562,7 +603,10 @@ func postSubmission(db *sql.DB, dbS *sql.DB) gin.HandlerFunc {
 			c.JSON(http.StatusInternalServerError, dbErr500ErrMsg)
 		} else {
 			idMine := c.GetHeader("x-id")
-			tokenT := c.GetHeader("Authorization")[len("Bearer"):]
+			tokenT := c.GetHeader("Authorization")
+			if tokenT != "" {
+				tokenT = tokenT[len("Bearer"):]
+			}
 			body, err := c.GetRawData()
 			if err != nil {
 				c.JSON(http.StatusInternalServerError, token{tokenT, reqErr500ErrMsg})
@@ -589,7 +633,7 @@ func postSubmission(db *sql.DB, dbS *sql.DB) gin.HandlerFunc {
 						} else if err2 != nil {
 							c.JSON(http.StatusInternalServerError, token{tokenT2, etcErr500ErrMsg})
 						} else {
-							u, err3 := dbQueryGetUser(db, resource.User.ID, "")
+							u, err3 := dbQueryGetUser(db, resource.User.ID, true)
 							if err3 == nil {
 								resource.User = u
 							}
@@ -624,7 +668,10 @@ func updSubmission(db *sql.DB, dbS *sql.DB) gin.HandlerFunc {
 		} else {
 			sid := c.Param("sid")
 			idMine := c.GetHeader("x-id")
-			tokenT := c.GetHeader("Authorization")[len("Bearer"):]
+			tokenT := c.GetHeader("Authorization")
+			if tokenT != "" {
+				tokenT = tokenT[len("Bearer"):]
+			}
 			isMod := dbQueryIsMod(db, idMine)
 			var err error
 			body, err2 := c.GetRawData()
@@ -694,7 +741,10 @@ func delSubmission(db *sql.DB, dbS *sql.DB) gin.HandlerFunc {
 		} else {
 			sid := c.Param("sid")
 			idMine := c.GetHeader("x-id")
-			tokenT := c.GetHeader("Authorization")[len("Bearer"):]
+			tokenT := c.GetHeader("Authorization")
+			if tokenT != "" {
+				tokenT = tokenT[len("Bearer"):]
+			}
 			tokenT2, msgM, _ := dbSQueryVerifyToken(dbS, tokenT, false, idMine)
 			isMod := dbQueryIsMod(db, idMine)
 			if msgM.Body == notAuth401ErrMsg.Body {
@@ -733,7 +783,10 @@ func getSubmissionComments(db *sql.DB, dbS *sql.DB) gin.HandlerFunc {
 		} else {
 			sid := c.Param("sid")
 			idMine := c.GetHeader("x-id")
-			tokenT := c.GetHeader("Authorization")[len("Bearer"):]
+			tokenT := c.GetHeader("Authorization")
+			if tokenT != "" {
+				tokenT = tokenT[len("Bearer"):]
+			}
 			page := c.DefaultQuery("page", "")
 			perPage := c.DefaultQuery("per_page", "")
 			var resource submissionComments
@@ -760,13 +813,15 @@ func getSubmissionComments(db *sql.DB, dbS *sql.DB) gin.HandlerFunc {
 							pageInt != 0 &&
 							perPageInt != 0 &&
 							len(resource.SubmissionComments) > 0 &&
-							(pageInt-1)*perPageInt >= 0 {
+							(pageInt-1)*perPageInt >= 0 &&
+							(pageInt-1)*perPageInt < len(resource.SubmissionComments) {
 							end := int(math.Min(float64(pageInt*perPageInt-1), float64(len(resource.SubmissionComments)-1)))
-							resource.SubmissionComments = resource.SubmissionComments[((pageInt - 1) * perPageInt):end]
+							l := len(resource.SubmissionComments)
+							resource.SubmissionComments = resource.SubmissionComments[((pageInt - 1) * perPageInt):(end + 1)]
 							if (pageInt-2)*perPageInt >= 0 {
 								resource.Previous = path + "/api/submissions/" + sid + "/comments?page=" + strconv.Itoa(pageInt-1) + "&per_page=" + perPage
 							}
-							if pageInt*perPageInt < len(resource.SubmissionComments) {
+							if pageInt*perPageInt < l {
 								resource.Next = path + "/api/submissions/" + sid + "/comments?page=" + strconv.Itoa(pageInt-1) + "&per_page=" + perPage
 							}
 						}
@@ -791,7 +846,10 @@ func getSubmissionComment(db *sql.DB, dbS *sql.DB) gin.HandlerFunc {
 			sid := c.Param("sid")
 			cid := c.Param("cid")
 			idMine := c.GetHeader("x-id")
-			tokenT := c.GetHeader("Authorization")[len("Bearer"):]
+			tokenT := c.GetHeader("Authorization")
+			if tokenT != "" {
+				tokenT = tokenT[len("Bearer"):]
+			}
 			var resource submissionComment
 			var err error
 			var msgM msg
@@ -826,7 +884,13 @@ func postSubmissionComment(db *sql.DB, dbS *sql.DB) gin.HandlerFunc {
 		} else {
 			sid := c.Param("sid")
 			idMine := c.GetHeader("x-id")
-			tokenT := c.GetHeader("Authorization")[len("Bearer"):]
+			tokenT := c.GetHeader("Authorization")
+			if tokenT != "" {
+				tokenT = tokenT[len("Bearer"):]
+			}
+			if tokenT != "" {
+				tokenT = tokenT[len("Bearer"):]
+			}
 			body, err := c.GetRawData()
 			if err != nil {
 				c.JSON(http.StatusInternalServerError, reqErr500ErrMsg)
@@ -853,7 +917,7 @@ func postSubmissionComment(db *sql.DB, dbS *sql.DB) gin.HandlerFunc {
 						} else if err2 != nil {
 							c.JSON(http.StatusInternalServerError, token{tokenT2, etcErr500ErrMsg})
 						} else {
-							u, err3 := dbQueryGetUser(db, resource.User.ID, "")
+							u, err3 := dbQueryGetUser(db, resource.User.ID, true)
 							if err3 == nil {
 								resource.User = u
 							}
@@ -885,7 +949,10 @@ func delSubmissionComment(db *sql.DB, dbS *sql.DB) gin.HandlerFunc {
 			sid := c.Param("sid")
 			cid := c.Param("cid")
 			idMine := c.GetHeader("x-id")
-			tokenT := c.GetHeader("Authorization")[len("Bearer"):]
+			tokenT := c.GetHeader("Authorization")
+			if tokenT != "" {
+				tokenT = tokenT[len("Bearer"):]
+			}
 			tokenT2, msgM, _ := dbSQueryVerifyToken(dbS, tokenT, false, idMine)
 			isMod := dbQueryIsMod(db, idMine)
 			if msgM.Body == notAuth401ErrMsg.Body {
@@ -927,7 +994,10 @@ func loginUser(db *sql.DB, dbS *sql.DB) gin.HandlerFunc {
 		} else if db.Ping() != nil {
 			c.JSON(http.StatusInternalServerError, dbErr500ErrMsg)
 		} else {
-			creds := c.GetHeader("Authorization")[len("Basic"):]
+			creds := c.GetHeader("Authorization")
+			if creds != "" {
+				creds = creds[len("Basic "):]
+			}
 			credsDec, err2 := base64.StdEncoding.DecodeString(creds)
 			if err2 != nil {
 				c.JSON(http.StatusUnprocessableEntity, unproc422ErrMsg)
@@ -958,8 +1028,11 @@ func logoutUser(db *sql.DB, dbS *sql.DB) gin.HandlerFunc {
 		} else if db.Ping() != nil {
 			c.JSON(http.StatusInternalServerError, dbErr500ErrMsg)
 		} else {
-			idMine := c.DefaultQuery("id", "")
-			tokenT := c.GetHeader("Authorization")[len("Bearer"):]
+			idMine := c.Param("id")
+			tokenT := c.GetHeader("Authorization")
+			if tokenT != "" {
+				tokenT = tokenT[len("Bearer"):]
+			}
 			_, msgM, _ := dbSQueryVerifyToken(dbS, tokenT, true, idMine)
 			if msgM.Body == notAuth401ErrMsg.Body {
 				c.Header("WWW-Authenticate", "Bearer")
@@ -983,7 +1056,10 @@ func getUsers(db *sql.DB, dbS *sql.DB) gin.HandlerFunc {
 			c.JSON(http.StatusInternalServerError, dbErr500ErrMsg)
 		} else {
 			idMine := c.GetHeader("x-id")
-			tokenT := c.GetHeader("Authorization")[len("Bearer"):]
+			tokenT := c.GetHeader("Authorization")
+			if tokenT != "" {
+				tokenT = tokenT[len("Bearer"):]
+			}
 			page := c.DefaultQuery("page", "")
 			perPage := c.DefaultQuery("per_page", "")
 			var resource users
@@ -1011,13 +1087,15 @@ func getUsers(db *sql.DB, dbS *sql.DB) gin.HandlerFunc {
 							pageInt != 0 &&
 							perPageInt != 0 &&
 							len(resource.Users) > 0 &&
-							(pageInt-1)*perPageInt >= 0 {
+							(pageInt-1)*perPageInt >= 0 &&
+							(pageInt-1)*perPageInt < len(resource.Users) {
 							end := int(math.Min(float64(pageInt*perPageInt-1), float64(len(resource.Users)-1)))
-							resource.Users = resource.Users[((pageInt - 1) * perPageInt):end]
+							l := len(resource.Users)
+							resource.Users = resource.Users[((pageInt - 1) * perPageInt):(end + 1)]
 							if (pageInt-2)*perPageInt >= 0 {
 								resource.Previous = path + "/api/users?page=" + strconv.Itoa(pageInt-1) + "&per_page=" + perPage
 							}
-							if pageInt*perPageInt < len(resource.Users) {
+							if pageInt*perPageInt < l {
 								resource.Next = path + "/api/users?page=" + strconv.Itoa(pageInt-1) + "&per_page=" + perPage
 							}
 						}
@@ -1041,12 +1119,15 @@ func getUser(db *sql.DB, dbS *sql.DB) gin.HandlerFunc {
 		} else {
 			id := c.Param("id")
 			idMine := c.GetHeader("x-id")
-			tokenT := c.GetHeader("Authorization")[len("Bearer"):]
+			tokenT := c.GetHeader("Authorization")
+			if tokenT != "" {
+				tokenT = tokenT[len("Bearer"):]
+			}
 			var resource user
 			var err error
 			var msgM msg
 			var tokenT2 = tokenT
-			resource, err = dbQueryGetUser(db, id, "")
+			resource, err = dbQueryGetUser(db, id, true)
 			resource.NewToken = token{Token: tokenT2, Status: msgM}
 			if err != nil {
 				c.JSON(http.StatusInternalServerError, token{tokenT2, dbErr500ErrMsg})
@@ -1114,7 +1195,10 @@ func updUser(db *sql.DB, dbS *sql.DB) gin.HandlerFunc {
 		} else {
 			id := c.Param("id")
 			idMine := c.GetHeader("x-id")
-			tokenT := c.GetHeader("Authorization")[len("Bearer"):]
+			tokenT := c.GetHeader("Authorization")
+			if tokenT != "" {
+				tokenT = tokenT[len("Bearer"):]
+			}
 			var err error
 			body, err2 := c.GetRawData()
 			if err2 != nil {
@@ -1133,7 +1217,7 @@ func updUser(db *sql.DB, dbS *sql.DB) gin.HandlerFunc {
 					} else if msgM.Body == etcErr500ErrMsg.Body || msgM.Body == dbErr500ErrMsg.Body {
 						c.JSON(http.StatusInternalServerError, token{tokenT, msgM})
 					} else if idMine != "" && tokenT != "" {
-						resource, err3 := dbQueryGetUser(db, id, "")
+						resource, err3 := dbQueryGetUser(db, id, true)
 						if err3 != nil {
 							c.JSON(http.StatusInternalServerError, token{tokenT2, dbErr500ErrMsg})
 						} else if resource.ID == "" {
@@ -1183,7 +1267,10 @@ func delUser(db *sql.DB, dbS *sql.DB) gin.HandlerFunc {
 		} else {
 			id := c.Param("id")
 			idMine := c.GetHeader("x-id")
-			tokenT := c.GetHeader("Authorization")[len("Bearer"):]
+			tokenT := c.GetHeader("Authorization")
+			if tokenT != "" {
+				tokenT = tokenT[len("Bearer"):]
+			}
 			tokenT2, msgM, _ := dbSQueryVerifyToken(dbS, tokenT, false, idMine)
 			isMod := dbQueryIsMod(db, idMine)
 			if msgM.Body == notAuth401ErrMsg.Body {
