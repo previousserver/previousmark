@@ -106,7 +106,7 @@ func dbQueryUpdateBenchmark(db *sql.DB, id string, bid string, title string, ico
 	row, err2 := db.Query(`
 		SELECT *
 		FROM benchmark_ratings
-		WHERE benchmark = $1, user = $2`, idI, idJ)
+		WHERE benchmark = $1 AND "user" = $2`, idI, idJ)
 	if row != nil && err2 == nil {
 		err = db.QueryRow(`
 		UPDATE benchmarks
@@ -230,7 +230,7 @@ func dbQueryPostBenchmarkComment(db *sql.DB, bid string, body string, id string)
 	}
 	var lastInsertId int
 	err = db.QueryRow(`
-		INSERT INTO benchmark_comments(body, benchmark, user)
+		INSERT INTO benchmark_comments(body, benchmark, "user")
 		VALUES($1, $2, $3)
 		RETURNING cid`, body, idK, idJ).Scan(&lastInsertId)
 	if err != nil {
@@ -306,12 +306,12 @@ func dbQueryGetSubmissions(db *sql.DB, id string, bid string, showAll bool) (sub
 			rows, err3 = db.Query(`
 			SELECT *
 			FROM submissions
-			WHERE user = $1`, idI)
+			WHERE "user" = $1`, idI)
 		} else {
 			rows, err3 = db.Query(`
 			SELECT *
 			FROM submissions
-			WHERE user = $1 AND is_verified = TRUE`, idI)
+			WHERE "user" = $1 AND is_verified = TRUE`, idI)
 		}
 	} else {
 		if err != nil || err2 != nil {
@@ -321,12 +321,12 @@ func dbQueryGetSubmissions(db *sql.DB, id string, bid string, showAll bool) (sub
 			rows, err3 = db.Query(`
 			SELECT *
 			FROM submissions
-			WHERE user = $1 AND benchmark = $2`, idI, idJ)
+			WHERE "user" = $1 AND benchmark = $2`, idI, idJ)
 		} else {
 			rows, err3 = db.Query(`
 			SELECT *
 			FROM submissions
-			WHERE user = $1 AND benchmark = $2 AND is_verified = TRUE`, idI, idJ)
+			WHERE "user" = $1 AND benchmark = $2 AND is_verified = TRUE`, idI, idJ)
 		}
 	}
 	if rows == nil || err3 != nil {
@@ -392,7 +392,7 @@ func dbQueryPostSubmission(db *sql.DB, screenshot string, benchmark benchmark, i
 	}
 	var lastInsertId int
 	err = db.QueryRow(`
-		INSERT INTO submissions(screenshot, benchmark, user)
+		INSERT INTO submissions(screenshot, benchmark, "user")
 		VALUES($1, $2, $3)
 		RETURNING sid`, screenshot, idI, idJ).Scan(&lastInsertId)
 	if err != nil {
@@ -416,7 +416,7 @@ func dbQueryUpdateSubmission(db *sql.DB, id string, sid string, result float32, 
 	row, err2 := db.Query(`
 		SELECT *
 		FROM submission_ratings
-		WHERE submission = $1, user = $2`, idI, idJ)
+		WHERE submission = $1 AND "user" = $2`, idI, idJ)
 	if row != nil && err2 == nil {
 		err = db.QueryRow(`
 		UPDATE submissions
@@ -540,7 +540,7 @@ func dbQueryPostSubmissionComment(db *sql.DB, sid string, body string, id string
 	}
 	var lastInsertId int
 	err = db.QueryRow(`
-		INSERT INTO submission_comments(body, submission, user)
+		INSERT INTO submission_comments(body, submission, "user")
 		VALUES($1, $2, $3)
 		RETURNING cid`, body, idK, idJ).Scan(&lastInsertId)
 	if err != nil {

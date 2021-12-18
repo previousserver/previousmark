@@ -57,7 +57,7 @@ func dbSQuerySendAndRefreshSecret(dbS *sql.DB, id string) (string, msg, error) {
 		return "", etcErr500ErrMsg, err2
 	}
 	go func() {
-		_, _ = dbSQueryRefreshSecret(dbS, id, false, refreshMin)
+		_, _ = dbSQueryRefreshSecret(dbS, id, true, refreshMin)
 	}()
 	return tokenT, msg{"Successfully refreshed secret"}, nil
 }
