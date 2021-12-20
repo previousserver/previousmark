@@ -50,29 +50,29 @@ func dbQueryGetBenchmarks(db *sql.DB) (benchmarks, error) {
 	return bs, nil
 }
 
-func dbQueryGetBenchmark(db *sql.DB, bid string) (benchmark, error) {
+func dbQueryGetBenchmark(db *sql.DB, bid string) (benchmark, msg, error) {
 	idI, err := strconv.Atoi(bid)
 	if err != nil {
-		return benchmark{}, err
+		return benchmark{}, badReq400ErrMsg, err
 	}
 	row, err2 := db.Query(`
 		SELECT *
 		FROM benchmarks
 		WHERE bid = $1`, idI)
 	if row == nil {
-		return benchmark{}, nil
+		return benchmark{}, msg{}, nil
 	}
 	if err2 != nil {
-		return benchmark{}, err
+		return benchmark{}, msg{}, err
 	}
 	var b benchmark
 	for row.Next() {
 		err = row.Scan(&b.BID, &b.Title, &b.Icon, &b.Description, &b.Metric, &b.Rating, &b.RatingCount)
 	}
 	if err != nil {
-		return benchmark{}, err
+		return benchmark{}, msg{}, err
 	}
-	return b, nil
+	return b, msg{}, nil
 }
 
 func dbQueryPostBenchmark(db *sql.DB, title string, icon string, description string, metric string) (benchmark, msg, error) {
@@ -113,9 +113,7 @@ func dbQueryUpdateBenchmark(db *sql.DB, id string, bid string, title string, ico
 		SET title = $1, icon = $2, description = $3, metric = $4
 		WHERE bid = $5
 		RETURNING bid, title, icon, description, metric, rating, rating_count`, title, icon, description, metric, idI).Scan(&b.BID, &b.Title, &b.Icon, &b.Description, &b.Metric, &b.Rating, &b.RatingCount)
-		if err != nil {
-			return benchmark{}, notFound404ErrMsg, err
-		} else if b.BID == "" {
+		if b.BID == "" || err != nil {
 			return benchmark{}, notFound404ErrMsg, err
 		}
 	} else {
@@ -125,88 +123,91 @@ func dbQueryUpdateBenchmark(db *sql.DB, id string, bid string, title string, ico
 		WHERE bid = $7
 		RETURNING bid, title, icon, description, metric, rating, rating_count`, title, icon, description, metric, rating, ratingCount, idI).Scan(&b.BID, &b.Title, &b.Icon, &b.Description, &b.Metric, &b.Rating, &b.RatingCount)
 	}
-	if err != nil || b.BID == "" {
+	if b.BID == "" || err != nil {
 		return benchmark{}, notFound404ErrMsg, err
 	}
 	return b, msg{}, nil
 }
 
-func dbQueryDeleteBenchmark(db *sql.DB, bid string) error {
+func dbQueryDeleteBenchmark(db *sql.DB, bid string) (msg, error) {
 	idI, err := strconv.Atoi(bid)
 	if err != nil {
-		return err
+		return badReq400ErrMsg, err
 	}
 	_, err = db.Exec(`
 	DELETE
 	FROM benchmarks
 	WHERE bid = $1`, idI)
 	if err != nil {
-		return err
+		return msg{}, err
 	}
-	return nil
+	return msg{}, nil
 }
 
-func dbQueryGetBenchmarkComments(db *sql.DB, bid string) (benchmarkComments, error) {
+func dbQueryGetBenchmarkComments(db *sql.DB, bid string) (benchmarkComments, msg, error) {
 	var rows *sql.Rows
 	idI, err := strconv.Atoi(bid)
 	if err != nil {
-		return benchmarkComments{}, err
+		return benchmarkComments{}, badReq400ErrMsg, err
 	}
 	err = db.Ping()
 	if err != nil {
-		return benchmarkComments{}, err
+		return benchmarkComments{}, msg{}, err
+	}
+	var bcs benchmarkComments
+	b, _, err2 := dbQueryGetBenchmark(db, bid)
+	if err2 == nil {
+		bcs.Benchmark = b
 	}
 	rows, err = db.Query(`
 		SELECT *
 		FROM benchmark_comments
 		WHERE benchmark = $1`, idI)
 	if rows == nil || err != nil {
-		return benchmarkComments{}, err
-	}
-	var bcs benchmarkComments
-	for rows.Next() {
-		var bc benchmarkComment
-		err = rows.Scan(&bc.CID, &bc.Body, &bc.Benchmark.BID, &bc.User.ID)
-		if err != nil {
-			return benchmarkComments{}, err
+		if err2 != nil {
+			return benchmarkComments{}, notFound404ErrMsg, err2
+		} else {
+			return benchmarkComments{}, msg{}, nil
 		}
-		bcs.BenchmarkComments = append(bcs.BenchmarkComments, bc)
+	} else {
+		for rows.Next() {
+			var bc benchmarkComment
+			err = rows.Scan(&bc.CID, &bc.Body, &bc.Benchmark.BID, &bc.User.ID)
+			if err != nil {
+				return benchmarkComments{}, etcErr500ErrMsg, err
+			}
+			bcs.BenchmarkComments = append(bcs.BenchmarkComments, bc)
+		}
+		return bcs, msg{}, nil
 	}
-	b, err2 := dbQueryGetBenchmark(db, bid)
-	if err2 == nil {
-		bcs.Benchmark = b
-	}
-	return bcs, nil
 }
 
-func dbQueryGetBenchmarkComment(db *sql.DB, bid string, cid string) (benchmarkComment, error) {
+func dbQueryGetBenchmarkComment(db *sql.DB, bid string, cid string) (benchmarkComment, msg, error) {
 	idI, err := strconv.Atoi(bid)
 	idJ, err2 := strconv.Atoi(cid)
 	if err != nil || err2 != nil {
-		return benchmarkComment{}, err
+		return benchmarkComment{}, badReq400ErrMsg, err
+	}
+	var bc benchmarkComment
+	b, _, err4 := dbQueryGetBenchmark(db, bid)
+	if err4 == nil {
+		bc.Benchmark = b
 	}
 	row, err3 := db.Query(`
 		SELECT *
 		FROM benchmark_comments
 		WHERE benchmark = $1 AND cid = $2`, idI, idJ)
-	if row == nil {
-		return benchmarkComment{}, err
+	if row == nil || err3 != nil {
+		return benchmarkComment{}, notFound404ErrMsg, err4
+	} else {
+		for row.Next() {
+			err = row.Scan(&bc.CID, &bc.Body, &bc.Benchmark.BID, &bc.User.ID)
+		}
+		if err != nil {
+			return benchmarkComment{}, etcErr500ErrMsg, err
+		}
+		return bc, msg{}, nil
 	}
-	if err3 != nil {
-		return benchmarkComment{}, err
-	}
-	var bc benchmarkComment
-	for row.Next() {
-		err = row.Scan(&bc.CID, &bc.Body, &bc.Benchmark.BID, &bc.User.ID)
-	}
-	if err != nil {
-		return benchmarkComment{}, err
-	}
-	b, err4 := dbQueryGetBenchmark(db, bid)
-	if err4 == nil {
-		bc.Benchmark = b
-	}
-	return bc, nil
 }
 
 func dbQueryPostBenchmarkComment(db *sql.DB, bid string, body string, id string) (benchmarkComment, msg, error) {
@@ -218,11 +219,9 @@ func dbQueryPostBenchmarkComment(db *sql.DB, bid string, body string, id string)
 	if err2 != nil {
 		return benchmarkComment{}, badReq400ErrMsg, err
 	}
-	b, err4 := dbQueryGetBenchmark(db, bid)
-	if err4 != nil {
-		return benchmarkComment{}, notFound404ErrMsg, err2
-	} else if b.BID == "" {
-		return benchmarkComment{}, notFound404ErrMsg, nil
+	b, _, err4 := dbQueryGetBenchmark(db, bid)
+	if err4 != nil || b.BID == "" {
+		return benchmarkComment{}, notFound404ErrMsg, err4
 	}
 	idK, err5 := strconv.Atoi(b.BID)
 	if err5 != nil {
@@ -239,30 +238,30 @@ func dbQueryPostBenchmarkComment(db *sql.DB, bid string, body string, id string)
 	return benchmarkComment{CID: string(rune(lastInsertId)), Body: body, Benchmark: benchmark{BID: bid}, User: user{ID: id}}, msg{}, nil
 }
 
-func dbQueryDeleteBenchmarkComment(db *sql.DB, bid string, cid string) error {
+func dbQueryDeleteBenchmarkComment(db *sql.DB, bid string, cid string) (msg, error) {
 	err := db.Ping()
 	if err != nil {
-		return err
+		return dbErr500ErrMsg, err
 	}
 	idJ, err2 := strconv.Atoi(cid)
 	if err2 != nil {
-		return err
+		return etcErr500ErrMsg, err
 	}
-	b, err4 := dbQueryGetBenchmark(db, bid)
+	b, _, err4 := dbQueryGetBenchmark(db, bid)
 	if err4 != nil || b.BID == "" {
-		return err
+		return notFound404ErrMsg, err
 	}
 	_, err = db.Exec(`
 	DELETE
 	FROM benchmark_comments
 	WHERE cid = $1`, idJ)
 	if err != nil {
-		return err
+		return dbErr500ErrMsg, err
 	}
-	return nil
+	return msg{}, nil
 }
 
-func dbQueryGetSubmissions(db *sql.DB, id string, bid string, showAll bool) (submissions, error) {
+func dbQueryGetSubmissions(db *sql.DB, id string, bid string, showAll bool) (submissions, msg, error) {
 	var rows *sql.Rows
 	var ss submissions
 	var u user
@@ -270,7 +269,7 @@ func dbQueryGetSubmissions(db *sql.DB, id string, bid string, showAll bool) (sub
 	var err4 error
 	err3 := db.Ping()
 	if err3 != nil {
-		return submissions{}, err3
+		return submissions{}, dbErr500ErrMsg, err3
 	}
 	idJ, err := strconv.Atoi(bid)
 	idI, err2 := strconv.Atoi(id)
@@ -281,7 +280,7 @@ func dbQueryGetSubmissions(db *sql.DB, id string, bid string, showAll bool) (sub
 		}
 	}
 	if err2 != nil {
-		b, err4 = dbQueryGetBenchmark(db, bid)
+		b, _, err4 = dbQueryGetBenchmark(db, bid)
 		if err4 == nil {
 			ss.Benchmark = b
 		}
@@ -292,7 +291,7 @@ func dbQueryGetSubmissions(db *sql.DB, id string, bid string, showAll bool) (sub
 		FROM submissions`)
 	} else if id == "" {
 		if err != nil {
-			return submissions{}, err
+			return submissions{}, badReq400ErrMsg, err
 		}
 		rows, err3 = db.Query(`
 		SELECT *
@@ -300,7 +299,7 @@ func dbQueryGetSubmissions(db *sql.DB, id string, bid string, showAll bool) (sub
 		WHERE benchmark = $1`, idJ)
 	} else if bid == "" {
 		if err2 != nil {
-			return submissions{}, err
+			return submissions{}, badReq400ErrMsg, err
 		}
 		if showAll {
 			rows, err3 = db.Query(`
@@ -315,7 +314,7 @@ func dbQueryGetSubmissions(db *sql.DB, id string, bid string, showAll bool) (sub
 		}
 	} else {
 		if err != nil || err2 != nil {
-			return submissions{}, err
+			return submissions{}, badReq400ErrMsg, err
 		}
 		if showAll {
 			rows, err3 = db.Query(`
@@ -329,43 +328,37 @@ func dbQueryGetSubmissions(db *sql.DB, id string, bid string, showAll bool) (sub
 			WHERE "user" = $1 AND benchmark = $2 AND is_verified = TRUE`, idI, idJ)
 		}
 	}
-	if rows == nil || err3 != nil {
-		return submissions{}, err
-	}
 	for rows.Next() {
 		var s submission
 		err = rows.Scan(&s.SID, &s.Result, &s.Screenshot, &s.Rating, &s.RatingCount, &s.IsVerified, &s.Benchmark.BID, &s.User.ID)
 		if err != nil {
-			return submissions{}, err
+			return submissions{}, etcErr500ErrMsg, err
 		}
 		ss.Submissions = append(ss.Submissions, s)
 	}
-	return ss, nil
+	return ss, msg{}, nil
 }
 
-func dbQueryGetSubmission(db *sql.DB, sid string) (submission, error) {
+func dbQueryGetSubmission(db *sql.DB, sid string) (submission, msg, error) {
 	idI, err := strconv.Atoi(sid)
 	if err != nil {
-		return submission{}, err
+		return submission{}, badReq400ErrMsg, err
 	}
 	row, err2 := db.Query(`
 		SELECT *
 		FROM submissions
 		WHERE sid = $1`, idI)
-	if row == nil {
-		return submission{}, nil
-	}
-	if err2 != nil {
-		return submission{}, err
+	if row == nil || err2 != nil {
+		return submission{}, notFound404ErrMsg, nil
 	}
 	var s submission
 	for row.Next() {
 		err = row.Scan(&s.SID, &s.Result, &s.Screenshot, &s.Rating, &s.RatingCount, &s.IsVerified, &s.Benchmark.BID, &s.User.ID)
 	}
 	if err != nil {
-		return submission{}, err
+		return submission{}, etcErr500ErrMsg, err
 	}
-	b, err4 := dbQueryGetBenchmark(db, s.Benchmark.BID)
+	b, _, err4 := dbQueryGetBenchmark(db, s.Benchmark.BID)
 	if err4 == nil {
 		s.Benchmark = b
 	}
@@ -373,7 +366,7 @@ func dbQueryGetSubmission(db *sql.DB, sid string) (submission, error) {
 	if err5 == nil {
 		s.User = u
 	}
-	return s, nil
+	return s, msg{}, nil
 }
 
 func dbQueryPostSubmission(db *sql.DB, screenshot string, benchmark benchmark, id string) (submission, msg, error) {
@@ -386,7 +379,7 @@ func dbQueryPostSubmission(db *sql.DB, screenshot string, benchmark benchmark, i
 	if err != nil || err3 != nil {
 		return submission{}, badReq400ErrMsg, err
 	}
-	b, err2 := dbQueryGetBenchmark(db, benchmark.BID)
+	b, _, err2 := dbQueryGetBenchmark(db, benchmark.BID)
 	if err2 != nil || b.BID == "" {
 		return submission{}, notFound404ErrMsg, err2
 	}
@@ -441,82 +434,78 @@ func dbQueryUpdateSubmission(db *sql.DB, id string, sid string, result float32, 
 	return s, msg{}, nil
 }
 
-func dbQueryDeleteSubmission(db *sql.DB, sid string) error {
+func dbQueryDeleteSubmission(db *sql.DB, sid string) msg {
 	idI, err := strconv.Atoi(sid)
 	if err != nil {
-		return err
+		return badReq400ErrMsg
 	}
 	_, err = db.Exec(`
 	DELETE
 	FROM submissions
 	WHERE sid = $1`, idI)
 	if err != nil {
-		return err
+		return notFound404ErrMsg
 	}
-	return nil
+	return msg{}
 }
 
-func dbQueryGetSubmissionComments(db *sql.DB, sid string) (submissionComments, error) {
+func dbQueryGetSubmissionComments(db *sql.DB, sid string) (submissionComments, msg, error) {
 	var rows *sql.Rows
 	idI, err := strconv.Atoi(sid)
 	if err != nil {
-		return submissionComments{}, err
+		return submissionComments{}, badReq400ErrMsg, err
 	}
 	err = db.Ping()
 	if err != nil {
-		return submissionComments{}, err
+		return submissionComments{}, dbErr500ErrMsg, err
 	}
 	rows, err = db.Query(`
 		SELECT *
 		FROM submission_comments
 		WHERE submission = $1`, idI)
-	if rows == nil || err != nil {
-		return submissionComments{}, err
-	}
 	var scs submissionComments
 	for rows.Next() {
 		var sc submissionComment
 		err = rows.Scan(&sc.CID, &sc.Body, &sc.Submission.SID, &sc.User.ID)
 		if err != nil {
-			return submissionComments{}, err
+			return submissionComments{}, etcErr500ErrMsg, err
 		}
 		scs.SubmissionComments = append(scs.SubmissionComments, sc)
 	}
-	s, err2 := dbQueryGetSubmission(db, sid)
+	s, _, err2 := dbQueryGetSubmission(db, sid)
 	if err2 == nil {
 		scs.Submission = s
+	} else {
+		return submissionComments{}, notFound404ErrMsg, err
 	}
-	return scs, nil
+	return scs, msg{}, nil
 }
 
-func dbQueryGetSubmissionComment(db *sql.DB, sid string, cid string) (submissionComment, error) {
+func dbQueryGetSubmissionComment(db *sql.DB, sid string, cid string) (submissionComment, msg, error) {
 	idI, err := strconv.Atoi(sid)
 	idJ, err2 := strconv.Atoi(cid)
 	if err != nil || err2 != nil {
-		return submissionComment{}, err
+		return submissionComment{}, badReq400ErrMsg, err
 	}
 	row, err3 := db.Query(`
 		SELECT *
 		FROM submission_comments
 		WHERE submission = $1 AND cid = $2`, idI, idJ)
-	if row == nil {
-		return submissionComment{}, err
-	}
-	if err3 != nil {
-		return submissionComment{}, err
+	if row == nil || err3 != nil {
+		return submissionComment{}, notFound404ErrMsg, err
 	}
 	var sc submissionComment
 	for row.Next() {
 		err = row.Scan(&sc.CID, &sc.Body, &sc.Submission.SID, &sc.User.ID)
 	}
 	if err != nil {
-		return submissionComment{}, err
+		return submissionComment{}, etcErr500ErrMsg, err
 	}
-	s, err4 := dbQueryGetSubmission(db, sid)
+	s, _, err4 := dbQueryGetSubmission(db, sid)
 	if err4 == nil {
 		sc.Submission = s
 	}
-	return sc, nil
+	return sc, msg{}, nil
 }
 
 func dbQueryPostSubmissionComment(db *sql.DB, sid string, body string, id string) (submissionComment, msg, error) {
@@ -528,7 +517,7 @@ func dbQueryPostSubmissionComment(db *sql.DB, sid string, body string, id string
 	if err2 != nil {
 		return submissionComment{}, badReq400ErrMsg, err
 	}
-	s, err4 := dbQueryGetSubmission(db, sid)
+	s, _, err4 := dbQueryGetSubmission(db, sid)
 	if err4 != nil {
 		return submissionComment{}, notFound404ErrMsg, err2
 	} else if s.SID == "" {
@@ -558,7 +547,7 @@ func dbQueryDeleteSubmissionComment(db *sql.DB, sid string, cid string) error {
 	if err2 != nil {
 		return err
 	}
-	s, err4 := dbQueryGetSubmission(db, sid)
+	s, _, err4 := dbQueryGetSubmission(db, sid)
 	if err4 != nil || s.SID == "" {
 		return err
 	}
