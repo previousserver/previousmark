@@ -58,7 +58,7 @@ func getBenchmarks(db *sql.DB, dbS *sql.DB) gin.HandlerFunc {
 								resource.Previous = path + "/api/benchmarks?page=" + strconv.Itoa(pageInt-1) + "&per_page=" + perPage
 							}
 							if pageInt*perPageInt < l {
-								resource.Next = path + "/api/benchmarks?page=" + strconv.Itoa(pageInt-1) + "&per_page=" + perPage
+								resource.Next = path + "/api/benchmarks?page=" + strconv.Itoa(pageInt+1) + "&per_page=" + perPage
 							}
 						} else {
 							resource.Benchmarks = nil
@@ -341,7 +341,7 @@ func getBenchmarkComments(db *sql.DB, dbS *sql.DB) gin.HandlerFunc {
 								resource.Previous = path + "/api/benchmarks/" + bid + "/comments?page=" + strconv.Itoa(pageInt-1) + "&per_page=" + perPage
 							}
 							if pageInt*perPageInt < l {
-								resource.Next = path + "/api/benchmarks/" + bid + "/comments?page=" + strconv.Itoa(pageInt-1) + "&per_page=" + perPage
+								resource.Next = path + "/api/benchmarks/" + bid + "/comments?page=" + strconv.Itoa(pageInt+1) + "&per_page=" + perPage
 							}
 						}
 					}
@@ -561,10 +561,10 @@ func getSubmissions(db *sql.DB, dbS *sql.DB) gin.HandlerFunc {
 							l := len(resource.Submissions)
 							resource.Submissions = resource.Submissions[((pageInt - 1) * perPageInt):(end + 1)]
 							if (pageInt-2)*perPageInt >= 0 {
-								resource.Previous = path + "/api/submissions/?id=" + id + "&bid=" + bid + "&page=" + strconv.Itoa(pageInt+1) + "&per_page=" + perPage
+								resource.Previous = path + "/api/submissions/?id=" + id + "&bid=" + bid + "&page=" + strconv.Itoa(pageInt-1) + "&per_page=" + perPage
 							}
 							if pageInt*perPageInt < l {
-								resource.Next = path + "/api/submissions/?id=" + id + "&bid=" + bid + "&page=" + strconv.Itoa(pageInt-1) + "&per_page=" + perPage
+								resource.Next = path + "/api/submissions/?id=" + id + "&bid=" + bid + "&page=" + strconv.Itoa(pageInt+1) + "&per_page=" + perPage
 							}
 						}
 					}
@@ -857,7 +857,7 @@ func getSubmissionComments(db *sql.DB, dbS *sql.DB) gin.HandlerFunc {
 								resource.Previous = path + "/api/submissions/" + sid + "/comments?page=" + strconv.Itoa(pageInt-1) + "&per_page=" + perPage
 							}
 							if pageInt*perPageInt < l {
-								resource.Next = path + "/api/submissions/" + sid + "/comments?page=" + strconv.Itoa(pageInt-1) + "&per_page=" + perPage
+								resource.Next = path + "/api/submissions/" + sid + "/comments?page=" + strconv.Itoa(pageInt+1) + "&per_page=" + perPage
 							}
 						}
 					}
@@ -1136,7 +1136,7 @@ func getUsers(db *sql.DB, dbS *sql.DB) gin.HandlerFunc {
 								resource.Previous = path + "/api/users?page=" + strconv.Itoa(pageInt-1) + "&per_page=" + perPage
 							}
 							if pageInt*perPageInt < l {
-								resource.Next = path + "/api/users?page=" + strconv.Itoa(pageInt-1) + "&per_page=" + perPage
+								resource.Next = path + "/api/users?page=" + strconv.Itoa(pageInt+1) + "&per_page=" + perPage
 							}
 						}
 					}
