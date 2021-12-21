@@ -1,8 +1,0 @@
-{
-  "benchmarks": [
-    {"title": "AIDA64 memory latency", "path": ""},
-    {"title": "CPU-Z CPU frequency", "path": ""},
-    {"title": "CPU-Z memory frequency", "path": ""},
-    {"title": "SuperPI 32M", "path": ""}
-  ]
-}

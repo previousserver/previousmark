@@ -437,7 +437,7 @@ func postBenchmarkComment(db *sql.DB, dbS *sql.DB) gin.HandlerFunc {
 						} else if err2 != nil {
 							c.JSON(http.StatusInternalServerError, token{tokenT2, etcErr500ErrMsg})
 						} else {
-							u, err3 := dbQueryGetUser(db, resource.User.ID, true)
+							u, _, err3 := dbQueryGetUser(db, resource.User.ID, true)
 							if err3 == nil {
 								resource.User = u
 							}
@@ -658,7 +658,7 @@ func postSubmission(db *sql.DB, dbS *sql.DB) gin.HandlerFunc {
 						} else if err2 != nil {
 							c.JSON(http.StatusInternalServerError, token{tokenT2, etcErr500ErrMsg})
 						} else {
-							u, err3 := dbQueryGetUser(db, resource.User.ID, true)
+							u, _, err3 := dbQueryGetUser(db, resource.User.ID, true)
 							if err3 == nil {
 								resource.User = u
 							}
@@ -953,7 +953,7 @@ func postSubmissionComment(db *sql.DB, dbS *sql.DB) gin.HandlerFunc {
 						} else if err2 != nil {
 							c.JSON(http.StatusInternalServerError, token{tokenT2, etcErr500ErrMsg})
 						} else {
-							u, err3 := dbQueryGetUser(db, resource.User.ID, true)
+							u, _, err3 := dbQueryGetUser(db, resource.User.ID, true)
 							if err3 == nil {
 								resource.User = u
 							}
@@ -1080,7 +1080,7 @@ func logoutUser(db *sql.DB, dbS *sql.DB) gin.HandlerFunc {
 			} else if msgM.Body == etcErr500ErrMsg.Body || msgM.Body == dbErr500ErrMsg.Body {
 				c.JSON(http.StatusInternalServerError, token{tokenT, msgM})
 			} else {
-				c.JSON(http.StatusNoContent, noCont204Msg)
+				c.JSON(http.StatusNoContent, nil)
 			}
 		}
 	}
@@ -1088,7 +1088,7 @@ func logoutUser(db *sql.DB, dbS *sql.DB) gin.HandlerFunc {
 
 func getUsers(db *sql.DB, dbS *sql.DB) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		if !isFulfillable(c, []string{"417", "406", "500", "400", "422", "401", "200"}) {
+		if !isFulfillable(c, []string{"417", "406", "500", "400", "200"}) {
 			c.JSON(http.StatusExpectationFailed, expFail417ErrMsg)
 		} else if !isAcceptable(c, "application/json") {
 			c.JSON(http.StatusNotAcceptable, notAcc406ErrMsg)
@@ -1150,7 +1150,7 @@ func getUsers(db *sql.DB, dbS *sql.DB) gin.HandlerFunc {
 
 func getUser(db *sql.DB, dbS *sql.DB) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		if !isFulfillable(c, []string{"417", "406", "500", "404", "200"}) {
+		if !isFulfillable(c, []string{"417", "406", "500", "404", "400", "200"}) {
 			c.JSON(http.StatusExpectationFailed, expFail417ErrMsg)
 		} else if !isAcceptable(c, "application/json") {
 			c.JSON(http.StatusNotAcceptable, notAcc406ErrMsg)
@@ -1167,10 +1167,14 @@ func getUser(db *sql.DB, dbS *sql.DB) gin.HandlerFunc {
 			var err error
 			var msgM msg
 			var tokenT2 = tokenT
-			resource, err = dbQueryGetUser(db, id, true)
+			resource, msgM, err = dbQueryGetUser(db, id, true)
 			resource.NewToken = token{Token: tokenT2, Status: msgM}
-			if err != nil {
-				c.JSON(http.StatusInternalServerError, token{tokenT2, dbErr500ErrMsg})
+			if msgM.Body == notFound404ErrMsg.Body {
+				c.JSON(http.StatusNotFound, token{tokenT2, msgM})
+			} else if msgM.Body == badReq400ErrMsg.Body {
+				c.JSON(http.StatusBadRequest, token{tokenT2, msgM})
+			} else if err != nil {
+				c.JSON(http.StatusInternalServerError, token{tokenT2, msgM})
 			} else if resource.ID == "" {
 				c.JSON(http.StatusNotFound, token{tokenT2, notFound404ErrMsg})
 			} else {
@@ -1187,7 +1191,7 @@ func getUser(db *sql.DB, dbS *sql.DB) gin.HandlerFunc {
 
 func postUser(db *sql.DB, dbS *sql.DB) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		if !isFulfillable(c, []string{"417", "406", "415", "401", "403", "500", "422", "409", "201"}) {
+		if !isFulfillable(c, []string{"417", "406", "415", "500", "422", "409", "201"}) {
 			c.JSON(http.StatusExpectationFailed, expFail417ErrMsg)
 		} else if !isAcceptable(c, "application/json") {
 			c.JSON(http.StatusNotAcceptable, notAcc406ErrMsg)
@@ -1224,7 +1228,7 @@ func postUser(db *sql.DB, dbS *sql.DB) gin.HandlerFunc {
 
 func updUser(db *sql.DB, dbS *sql.DB) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		if !isFulfillable(c, []string{"417", "406", "415", "401", "403", "500", "422", "404", "200"}) {
+		if !isFulfillable(c, []string{"417", "406", "415", "401", "403", "500", "400", "422", "404", "200"}) {
 			c.JSON(http.StatusExpectationFailed, expFail417ErrMsg)
 		} else if !isAcceptable(c, "application/json") {
 			c.JSON(http.StatusNotAcceptable, notAcc406ErrMsg)
@@ -1257,9 +1261,13 @@ func updUser(db *sql.DB, dbS *sql.DB) gin.HandlerFunc {
 					} else if msgM.Body == etcErr500ErrMsg.Body || msgM.Body == dbErr500ErrMsg.Body {
 						c.JSON(http.StatusInternalServerError, token{tokenT, msgM})
 					} else if idMine != "" && tokenT != "" {
-						resource, err3 := dbQueryGetUser(db, id, true)
-						if err3 != nil {
-							c.JSON(http.StatusInternalServerError, token{tokenT2, dbErr500ErrMsg})
+						resource, msgM2, err3 := dbQueryGetUser(db, id, true)
+						if msgM2.Body == notFound404ErrMsg.Body {
+							c.JSON(http.StatusNotFound, token{tokenT2, msgM2})
+						} else if msgM2.Body == badReq400ErrMsg.Body {
+							c.JSON(http.StatusBadRequest, token{tokenT2, msgM2})
+						} else if err3 != nil {
+							c.JSON(http.StatusInternalServerError, token{tokenT2, msgM2})
 						} else if resource.ID == "" {
 							c.JSON(http.StatusNotFound, token{tokenT2, notFound404ErrMsg})
 						} else {
@@ -1322,7 +1330,7 @@ func delUser(db *sql.DB, dbS *sql.DB) gin.HandlerFunc {
 				if isMod && id != idMine {
 					err := dbQueryDeleteUser(db, dbS, id)
 					if err != nil {
-						c.JSON(http.StatusInternalServerError, token{tokenT2, dbErr500ErrMsg})
+						c.JSON(http.StatusNotFound, token{tokenT2, notFound404ErrMsg})
 					} else {
 						c.Header("x-token", tokenT2)
 						c.JSON(http.StatusNoContent, nil)

@@ -274,7 +274,7 @@ func dbQueryGetSubmissions(db *sql.DB, id string, bid string, showAll bool) (sub
 	idJ, err := strconv.Atoi(bid)
 	idI, err2 := strconv.Atoi(id)
 	if err != nil {
-		u, err4 = dbQueryGetUser(db, id, true)
+		u, _, err4 = dbQueryGetUser(db, id, true)
 		if err4 == nil {
 			ss.User = u
 		}
@@ -362,7 +362,7 @@ func dbQueryGetSubmission(db *sql.DB, sid string) (submission, msg, error) {
 	if err4 == nil {
 		s.Benchmark = b
 	}
-	u, err5 := dbQueryGetUser(db, s.User.ID, true)
+	u, _, err5 := dbQueryGetUser(db, s.User.ID, true)
 	if err5 == nil {
 		s.User = u
 	}
@@ -589,10 +589,10 @@ func dbQueryGetUsers(db *sql.DB, showAll bool) (users, error) {
 	return us, nil
 }
 
-func dbQueryGetUser(db *sql.DB, str string, isId bool) (user, error) {
+func dbQueryGetUser(db *sql.DB, str string, isId bool) (user, msg, error) {
 	idI, err := strconv.Atoi(str)
 	if err != nil && isId {
-		return user{}, err
+		return user{}, badReq400ErrMsg, err
 	}
 	var row *sql.Rows
 	if isId {
@@ -607,19 +607,19 @@ func dbQueryGetUser(db *sql.DB, str string, isId bool) (user, error) {
 		WHERE nickname = $1`, str)
 	}
 	if row == nil {
-		return user{}, nil
+		return user{}, notFound404ErrMsg, nil
 	}
 	if err != nil {
-		return user{}, err
+		return user{}, dbErr500ErrMsg, err
 	}
 	var u user
 	for row.Next() {
 		err = row.Scan(&u.ID, &u.Nickname, &u.Avatar, &u.IsBanned, &u.IsVerified, &u.IsMod)
 	}
 	if err != nil {
-		return user{}, err
+		return user{}, etcErr500ErrMsg, err
 	}
-	return u, nil
+	return u, msg{}, nil
 }
 
 func dbQueryPostUser(db *sql.DB, dbS *sql.DB, nickname string, email string, password string) (user, msg, error) {
@@ -648,7 +648,7 @@ func dbQueryPostUser(db *sql.DB, dbS *sql.DB, nickname string, email string, pas
 func dbQueryUpdateUser(db *sql.DB, id string, email string, avatar string, isVerified bool, isBanned bool) (user, msg, error) {
 	idI, err := strconv.Atoi(id)
 	if err != nil {
-		return user{}, etcErr500ErrMsg, err
+		return user{}, badReq400ErrMsg, err
 	}
 	err = db.Ping()
 	if err != nil {
