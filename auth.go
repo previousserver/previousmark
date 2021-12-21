@@ -157,7 +157,7 @@ func dbQueryLoginUser(nickname string, password string, db *sql.DB, dbS *sql.DB)
 	if nickN != nickname {
 		return "", notAuth401ErrMsg, nil
 	}
-	userU, err2 := dbQueryGetUser(db, nickN, false)
+	userU, _, err2 := dbQueryGetUser(db, nickN, false)
 	if err2 != nil {
 		return "", dbErr500ErrMsg, err2
 	}
