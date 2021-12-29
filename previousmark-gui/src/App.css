@@ -1,0 +1,138 @@
+.Link {
+  color: white;
+}
+
+.App-button {
+  transition-duration: 1s;
+  background-color: transparent;
+  border: 2px solid white;
+  color: white;
+}
+
+.App-button:hover {
+  background-color: white;
+  border: 2px solid white;
+  color: black;
+}
+
+
+
+.App-header-logo {
+  height: 3vmin;
+  pointer-events: none;
+}
+
+.App-header-menu {
+  height: 3vmin;
+  pointer-events: none;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .App-header-menu {
+    animation-name: App-logo-rotate;
+    animation-duration: 2s;
+    animation-delay: 2s;
+    animation-fill-mode: forwards;
+  }
+}
+
+@keyframes App-logo-rotate {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(90deg);
+  }
+}
+
+
+.App-header {
+  text-align: justify;
+  background-color: #008080;
+  width: 100%;
+  height: 10vmin;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  font-size: 3vmin;
+  color: #00ffff;
+}
+
+.App-header-link {
+  transition-duration: 1s;
+  text-align: center;
+  text-decoration: none;
+  padding: 1vmin;
+  color: white;
+}
+
+.App-header-link:hover {
+  color: #00ffff;
+}
+
+
+
+.App-content {
+  height: 80vmin;
+  font-size: 3vmin;
+  width: 100%;
+  display: flex;
+  text-align: center;
+  align-items: center;
+  justify-content: center;
+  background-color: #9ae9ae;
+}
+
+
+.App-footer {
+  position: absolute;
+  width: 100%;
+  bottom: 0;
+  text-align: center;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 2vmin;
+  background-color: #00ffff;
+  height: 10vmin;
+}
+
+
+.App-logo {
+  height: 40vmin;
+  pointer-events: none;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .App-logo {
+    animation: App-logo-spin infinite 20s linear;
+  }
+}
+
+@keyframes App-logo-spin {
+  from {
+    transform: rotateY(0deg);
+    transform-style: preserve-3d;
+  }
+  to {
+    transform: rotateY(360deg);
+    transform-style: preserve-3d;
+  }
+}
+
+
+
+@font-face {
+  font-family: 'Palemonas';
+  src: url('Palemonas.ttf') format('truetype');
+}
+
+body {
+  margin: 0;
+  padding: 0;
+  background-color: #9ae9ae;
+  font-family: 'Palemonas';
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}

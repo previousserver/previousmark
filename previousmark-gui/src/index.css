@@ -1,0 +1,16 @@
+@font-face {
+  font-family: Palemonas;
+  src: url(https://cdn.discordapp.com/attachments/865667020624625684/923443993369530438/Palemonas.ttf)
+}
+
+body {
+  margin: 0;
+  font-family: 'Palemonas';
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+code {
+  font-family: source-code-pro, Menlo, Monaco, Consolas, 'Courier New',
+    monospace;
+}
