@@ -1,6 +1,7 @@
 package main
 
 import (
+	"crypto/sha256"
 	"database/sql"
 	"fmt"
 	"github.com/golang-jwt/jwt"
@@ -76,14 +77,42 @@ func refreshSecret(id string, nullify bool, sleep int) (string, error) {
 	return secret, nil
 }
 
+func queryVerifyNoUpd(token string, id string) (bool, msg, error) {
+	idI, err := strconv.Atoi(id)
+	if err != nil {
+		return false, notAuth401ErrMsg, err
+	}
+	secret, ok := secrets[idI]
+	if !ok || secret == "" {
+		return false, notAuth401ErrMsg, fmt.Errorf("")
+	}
+	var tokenT = ""
+	t := strings.Split(token, " ")
+	if len(t) == 2 {
+		tokenT = t[1]
+	}
+	tokenT2, err3 := jwt.Parse(tokenT, func(token *jwt.Token) (interface{}, error) {
+		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
+			return nil, fmt.Errorf("")
+		}
+		return []byte(secret), nil
+	})
+	if err3 != nil {
+		return false, notAuth401ErrMsg, err3
+	}
+	if tokenT2.Valid {
+		return true, msg{}, nil
+	}
+	return false, notAuth401ErrMsg, nil
+}
+
 func queryVerifyToken(token string, nullify bool, id string) (string, msg, error) {
-	var secret string
 	idI, err := strconv.Atoi(id)
 	if err != nil {
 		return token, notAuth401ErrMsg, err
 	}
-	secret = secrets[idI]
-	if secret == "" {
+	secret, ok := secrets[idI]
+	if !ok || secret == "" {
 		return token, notAuth401ErrMsg, nil
 	}
 	var tokenT = ""
@@ -135,7 +164,7 @@ func dbQueryLoginUser(nickname string, password string, db *sql.DB) (string, msg
 	err := db.QueryRow(`
 	SELECT nick, nuke
 	FROM users
-	WHERE nick = $1 AND nuke = sha256($2)`, nickname, password).Scan(&nickN, &disposableP)
+	WHERE nick = $1 AND nuke = sha256($2)`, nickname, saltify(password)).Scan(&nickN, &disposableP)
 	if err != nil {
 		return "", dbErr500ErrMsg, err
 	}
@@ -150,6 +179,27 @@ func dbQueryLoginUser(nickname string, password string, db *sql.DB) (string, msg
 	return checkSecretLogin(id)
 }
 
-func saltify(password string) {
+func dbQueryNewPassword(id string, old string, new string, db *sql.DB) (string, msg, error) {
+	u, _, err := dbQueryGetUser(db, id, true)
+	if err != nil {
+		return "", msg{}, err
+	}
+	i, _ := strconv.Atoi(u.UID)
+	err = db.QueryRow(`
+	UPDATE users
+	SET nuke = sha256($1), lastnuke = now()
+	WHERE uid = $2 AND nuke = sha256($3)
+	RETURNING uid`, old, i, new).Scan(Ignore)
+	if err != nil {
+		return "", msg{}, err
+	}
+	return new, msg{}, nil
+}
+
+func saltify(password string) string {
 	// Pass to dbQueryLoginUser
+	s := sha256.Sum256([]byte(password))
+	s1 := string(s[:])
+	s1 = salt + s1[len(salt):]
+	return s1
 }

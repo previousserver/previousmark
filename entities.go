@@ -8,7 +8,6 @@ type benchmarks struct {
 	Benchmarks []benchmark `json:"benchmarks"`
 	Previous   string      `json:"previous"`
 	Next       string      `json:"next"`
-	NewToken   token       `json:"token"`
 }
 
 type benchmark struct {
@@ -17,14 +16,13 @@ type benchmark struct {
 	Description string `json:"description"`
 	Version     string `json:"version"`
 	Url         string `json:"url"`
-	NewToken    token  `json:"token"`
 }
 
 type blogposts struct {
 	Blogposts []blogpost `json:"blogposts"`
+	User      user       `json:"user"`
 	Previous  string     `json:"previous"`
 	Next      string     `json:"next"`
-	NewToken  token      `json:"token"`
 }
 
 type blogpost struct {
@@ -35,7 +33,6 @@ type blogpost struct {
 	Created    string   `json:"created"`
 	IsVerified bool     `json:"verified"`
 	Tags       []string `json:"tags"`
-	NewToken   token    `json:"token"`
 }
 
 type blogpostComments struct {
@@ -44,17 +41,15 @@ type blogpostComments struct {
 	User             user              `json:"user"`
 	Previous         string            `json:"previous"`
 	Next             string            `json:"next"`
-	NewToken         token             `json:"token"`
 }
 
 type blogpostComment struct {
-	BCID       string   `json:"bcid"`
-	Body       string   `json:"body"`
-	Blogpost   blogpost `json:"blogpost"`
-	User       user     `json:"user"`
-	Created    string   `json:"created"`
-	IsVerified bool     `json:"verified"`
-	NewToken   token    `json:"token"`
+	BCID     string   `json:"bcid"`
+	Body     string   `json:"body"`
+	Blogpost blogpost `json:"blogpost"`
+	User     user     `json:"user"`
+	Created  string   `json:"created"`
+	//IsVerified bool     `json:"verified"`
 }
 
 type submissions struct {
@@ -63,7 +58,6 @@ type submissions struct {
 	User        user         `json:"user"`
 	Previous    string       `json:"previous"`
 	Next        string       `json:"next"`
-	NewToken    token        `json:"token"`
 }
 
 type submission struct {
@@ -79,7 +73,12 @@ type submission struct {
 	Benchmark  benchmark `json:"benchmark"`
 	User       user      `json:"user"`
 	Post       blogpost  `json:"post"`
-	NewToken   token     `json:"token"`
+}
+
+type processors struct {
+	Processors []processor `json:"processors"`
+	Previous   string      `json:"previous"`
+	Next       string      `json:"next"`
 }
 
 type processor struct {
@@ -87,7 +86,12 @@ type processor struct {
 	Model        string `json:"model"`
 	Lineup       string `json:"lineup"`
 	Manufacturer string `json:"manufacturer"`
-	NewToken     token  `json:"token"`
+}
+
+type memories struct {
+	Memories []memory `json:"memories"`
+	Previous string   `json:"previous"`
+	Next     string   `json:"next"`
 }
 
 type memory struct {
@@ -97,7 +101,6 @@ type memory struct {
 	Capacity     string `json:"capacity"`
 	Lineup       string `json:"lineup"`
 	Manufacturer string `json:"manufacturer"`
-	NewToken     token  `json:"token"`
 }
 
 type submissionComments struct {
@@ -106,22 +109,21 @@ type submissionComments struct {
 	User               user                `json:"user"`
 	Previous           string              `json:"previous"`
 	Next               string              `json:"next"`
-	NewToken           token               `json:"token"`
 }
 
 type submissionComment struct {
 	SCID       string     `json:"scid"`
 	Body       string     `json:"body"`
 	Submission submission `json:"submission"`
-	User       user       `json:"user"`
-	NewToken   token      `json:"token"`
+	Created    string     `json:"created"`
+	//IsVerified bool       `json:"verified"`
+	User user `json:"user"`
 }
 
 type users struct {
 	Users    []user `json:"users"`
 	Previous string `json:"previous"`
 	Next     string `json:"next"`
-	NewToken token  `json:"token"`
 }
 
 type user struct {
@@ -136,7 +138,6 @@ type user struct {
 	IsMod      bool   `json:"mod"`
 	Created    string `json:"created"`
 	LastNuke   string `json:"lastNuke"`
-	NewToken   token  `json:"token"`
 }
 
 type token struct {
