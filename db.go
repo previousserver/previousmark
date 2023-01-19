@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"fmt"
 	_ "github.com/lib/pq"
+	"log"
 	"reflect"
 	"strconv"
 )
@@ -32,6 +33,7 @@ func dbInit(dbToOpen string) (*sql.DB, error) {
 	}
 	err = db.Ping()
 	if err != nil {
+		println(err)
 		return nil, err
 	}
 	return db, err
@@ -42,7 +44,7 @@ func dbQueryGetBenchmarks(db *sql.DB) (benchmarks, error) {
 	var err error
 	rows, err = db.Query(`
 		SELECT *
-		FROM benchmarks`)
+		FROM previousmark.benchmarks`)
 	if rows == nil || err != nil {
 		return benchmarks{}, err
 	}
@@ -65,7 +67,7 @@ func dbQueryGetBenchmark(db *sql.DB, bid string) (benchmark, msg, error) {
 	}
 	row, err2 := db.Query(`
 		SELECT *
-		FROM benchmarks
+		FROM previousmark.benchmarks
 		WHERE bid = $1`, idI)
 	if row == nil {
 		return benchmark{}, msg{}, nil
@@ -90,13 +92,13 @@ func dbQueryPostBenchmark(db *sql.DB, title string, description string, version 
 	}
 	var lastInsertId int
 	err = db.QueryRow(`
-		INSERT INTO benchmarks(title, description, ver, url)
+		INSERT INTO previousmark.benchmarks(title, description, ver, url)
 		VALUES($1, $2, $3, $4)
 		RETURNING bid`, title, description, version, url).Scan(&lastInsertId)
 	if err != nil {
 		return benchmark{}, conflict409ErrMsg, err
 	}
-	return benchmark{BID: string(rune(lastInsertId)), Title: title, Description: description, Version: version, Url: url}, msg{}, nil
+	return benchmark{BID: strconv.Itoa(lastInsertId), Title: title, Description: description, Version: version, Url: url}, msg{}, nil
 }
 
 func dbQueryUpdateBenchmark(db *sql.DB, bid string, title string, description string, version string, url string) (benchmark, msg, error) {
@@ -110,7 +112,7 @@ func dbQueryUpdateBenchmark(db *sql.DB, bid string, title string, description st
 	}
 	var b benchmark
 	err = db.QueryRow(`
-		UPDATE benchmarks
+		UPDATE previousmark.benchmarks
 		SET title = $1, description = $2, ver = $3, url = $4
 		WHERE bid = $5
 		RETURNING bid, title, description, ver, url`, idI, title, description, version, url).Scan(&b.BID, &b.Title, &b.Description, &b.Version, &b.Url)
@@ -131,7 +133,7 @@ func dbQueryDeleteBenchmark(db *sql.DB, bid string) (msg, error) {
 	}
 	_, err = db.Exec(`
 	DELETE
-	FROM benchmarks
+	FROM previousmark.benchmarks
 	WHERE bid = $1`, idI)
 	if err != nil {
 		return msg{}, err
@@ -160,7 +162,7 @@ func dbQueryGetBlogposts(db *sql.DB, id string, tags []string, showAll bool) (bl
 			if tags == nil {
 				rows, err3 = db.Query(`
 				SELECT *
-				FROM blogposts`)
+				FROM previousmark.blogposts`)
 				for rows.Next() {
 					var p blogpost
 					err := rows.Scan(&p.BPID, &p.Title, &p.Body, &p.Created, &p.IsVerified, &p.User.UID)
@@ -173,7 +175,7 @@ func dbQueryGetBlogposts(db *sql.DB, id string, tags []string, showAll bool) (bl
 				for _, tag := range tags {
 					rowsTemp, err5 := db.Query(`
 					SELECT submission
-					FROM posttags
+					FROM previousmark.posttags
 					WHERE tag = $1`, tag)
 					if err5 == nil {
 						for rowsTemp.Next() {
@@ -185,7 +187,7 @@ func dbQueryGetBlogposts(db *sql.DB, id string, tags []string, showAll bool) (bl
 								var p blogpost
 								err := db.QueryRow(`
 								SELECT *
-								FROM blogposts
+								FROM previousmark.blogposts
 								WHERE bpid = $1`, ii).Scan(&p.BPID, &p.Title, &p.Body, &p.Created, &p.IsVerified, &p.User.UID)
 								if err == nil {
 									p.User, _, err = dbQueryGetUser(db, p.User.UID, true)
@@ -208,7 +210,7 @@ func dbQueryGetBlogposts(db *sql.DB, id string, tags []string, showAll bool) (bl
 			if tags == nil {
 				rows, err3 = db.Query(`
 				SELECT *
-				FROM blogposts
+				FROM previousmark.blogposts
 				WHERE "user" = $1`, idI)
 				for rows.Next() {
 					var p blogpost
@@ -221,7 +223,7 @@ func dbQueryGetBlogposts(db *sql.DB, id string, tags []string, showAll bool) (bl
 				for _, tag := range tags {
 					rowsTemp, err5 := db.Query(`
 					SELECT submission
-					FROM posttags
+					FROM previousmark.posttags
 					WHERE tag = $1`, tag)
 					if err5 == nil {
 						for rowsTemp.Next() {
@@ -233,7 +235,7 @@ func dbQueryGetBlogposts(db *sql.DB, id string, tags []string, showAll bool) (bl
 								var p blogpost
 								err := db.QueryRow(`
 								SELECT *
-								FROM blogposts
+								FROM previousmark.blogposts
 								WHERE bpid = $1 AND "user" = $2`, ii, idI).Scan(&p.BPID, &p.Title, &p.Body, &p.Created, &p.IsVerified, &p.User.UID)
 								if err == nil {
 									for _, pFinal := range ps.Blogposts {
@@ -254,7 +256,7 @@ func dbQueryGetBlogposts(db *sql.DB, id string, tags []string, showAll bool) (bl
 			if tags == nil {
 				rows, err3 = db.Query(`
 				SELECT *
-				FROM blogposts
+				FROM previousmark.blogposts
 				WHERE verified = TRUE`)
 				for rows.Next() {
 					var p blogpost
@@ -268,7 +270,7 @@ func dbQueryGetBlogposts(db *sql.DB, id string, tags []string, showAll bool) (bl
 				for _, tag := range tags {
 					rowsTemp, err5 := db.Query(`
 					SELECT submission
-					FROM posttags
+					FROM previousmark.posttags
 					WHERE tag = $1`, tag)
 					if err5 == nil {
 						for rowsTemp.Next() {
@@ -280,7 +282,7 @@ func dbQueryGetBlogposts(db *sql.DB, id string, tags []string, showAll bool) (bl
 								var p blogpost
 								err := db.QueryRow(`
 								SELECT *
-								FROM blogposts
+								FROM previousmark.blogposts
 								WHERE bpid = $1 AND verified = TRUE`, ii).Scan(&p.BPID, &p.Title, &p.Body, &p.Created, &p.IsVerified, &p.User.UID)
 								if err == nil {
 									p.User, _, err = dbQueryGetUser(db, p.User.UID, true)
@@ -303,7 +305,7 @@ func dbQueryGetBlogposts(db *sql.DB, id string, tags []string, showAll bool) (bl
 			if tags == nil {
 				rows, err3 = db.Query(`
 				SELECT *
-				FROM blogposts
+				FROM previousmark.blogposts
 				WHERE "user" = $1 AND verified = TRUE`, idI)
 				for rows.Next() {
 					var p blogpost
@@ -316,7 +318,7 @@ func dbQueryGetBlogposts(db *sql.DB, id string, tags []string, showAll bool) (bl
 				for _, tag := range tags {
 					rowsTemp, err5 := db.Query(`
 					SELECT submission
-					FROM posttags
+					FROM previousmark.posttags
 					WHERE tag = $1`, tag)
 					if err5 == nil {
 						for rowsTemp.Next() {
@@ -328,7 +330,7 @@ func dbQueryGetBlogposts(db *sql.DB, id string, tags []string, showAll bool) (bl
 								var p blogpost
 								err := db.QueryRow(`
 								SELECT *
-								FROM blogposts
+								FROM previousmark.blogposts
 								WHERE bpid = $1 AND "user" = $2 AND verified = TRUE`, ii, idI).Scan(&p.BPID, &p.Title, &p.Body, &p.Created, &p.IsVerified, &p.User.UID)
 								if err == nil {
 									for _, pFinal := range ps.Blogposts {
@@ -350,7 +352,7 @@ func dbQueryGetBlogposts(db *sql.DB, id string, tags []string, showAll bool) (bl
 		if err == nil {
 			rows2, err5 := db.Query(`
 			SELECT tag
-			FROM posttags
+			FROM previousmark.posttags
 			WHERE submission = $1`, i)
 			if err5 == nil {
 				for rows2.Next() {
@@ -374,13 +376,13 @@ func dbQueryGetBlogpost(db *sql.DB, bpid string) (blogpost, msg, error) {
 		var p blogpost
 		err = db.QueryRow(`
 		SELECT *
-		FROM blogposts
+		FROM previousmark.blogposts
 		WHERE bpid = $1`, i).Scan(&p.BPID, &p.Title, &p.Body, &p.Created, &p.IsVerified, &p.User.UID)
 		if err == nil {
 			p.User, _, _ = dbQueryGetUser(db, p.User.UID, true)
 			rows2, err5 := db.Query(`
 			SELECT tag
-			FROM posttags
+			FROM previousmark.posttags
 			WHERE submission = $1`, i)
 			if err5 == nil {
 				for rows2.Next() {
@@ -409,7 +411,7 @@ func dbQueryPostBlogpost(db *sql.DB, title string, body string, tags []string, i
 	}
 	var lastInsertId int
 	err := db.QueryRow(`
-		INSERT INTO blogposts(title, body, user)
+		INSERT INTO previousmark.blogposts(title, body, "user")
 		VALUES($1, $2, $3)
 		RETURNING sid`, title, body, idJ).Scan(&lastInsertId)
 	if err != nil {
@@ -420,19 +422,19 @@ func dbQueryPostBlogpost(db *sql.DB, title string, body string, tags []string, i
 	for _, tag := range tags {
 		var applied string
 		err = db.QueryRow(`
-		INSERT INTO tags(tag)
+		INSERT INTO previousmark.tags(tag)
 		VALUES($1)
 		ON CONFLICT DO NOTHING
 		RETURNING tag`, tag).Scan(&applied)
 		if err == nil && tag == applied {
 			_ = db.QueryRow(`
-			INSERT INTO POSTTAGS(submission, tag)
+			INSERT INTO previousmark.posttags(submission, tag)
 			VALUES($1, $2)
 			ON CONFLICT DO NOTHING
 			RETURNING tag`, lastInsertId, tag)
 		}
 	}
-	return dbQueryGetBlogpost(db, string(rune(lastInsertId)))
+	return dbQueryGetBlogpost(db, strconv.Itoa(lastInsertId))
 }
 
 func dbQueryUpdateBlogpost(db *sql.DB, bpid string, title string, body string, isVerified bool) (blogpost, msg, error) {
@@ -447,7 +449,7 @@ func dbQueryUpdateBlogpost(db *sql.DB, bpid string, title string, body string, i
 	}
 	var p blogpost
 	err = db.QueryRow(`
-	UPDATE blogposts
+	UPDATE previousmark.blogposts
 	SET title = $1, body = $2, verified = $3
 	WHERE bpid = $4
 	RETURNING bpid`, title, body, isVerified, idI).Scan(&p.BPID)
@@ -464,7 +466,7 @@ func dbQueryDeleteBlogpost(db *sql.DB, bpid string) msg {
 	}
 	_, err = db.Exec(`
 	DELETE
-	FROM blogposts
+	FROM previousmark.blogposts
 	WHERE bpid = $1`, idI)
 	if err != nil {
 		return notFound404ErrMsg
@@ -504,14 +506,14 @@ func dbQueryGetSubmissions(db *sql.DB, id string, bid string, showAll bool) (sub
 		if id == "" && bid == "" {
 			rows, err3 = db.Query(`
 			SELECT *
-			FROM submissions`)
+			FROM previousmark.submissions`)
 		} else if id == "" {
 			if err != nil {
 				return submissions{}, badReq400ErrMsg, err
 			}
 			rows, err3 = db.Query(`
 			SELECT *
-			FROM submissions
+			FROM previousmark.submissions
 			WHERE benchmark = $1`, idJ)
 		} else if bid == "" {
 			if err2 != nil {
@@ -519,7 +521,7 @@ func dbQueryGetSubmissions(db *sql.DB, id string, bid string, showAll bool) (sub
 			}
 			rows, err3 = db.Query(`
 			SELECT *
-			FROM submissions
+			FROM previousmark.submissions
 			WHERE "user" = $1`, idI)
 		} else {
 			if err != nil || err2 != nil {
@@ -527,14 +529,14 @@ func dbQueryGetSubmissions(db *sql.DB, id string, bid string, showAll bool) (sub
 			}
 			rows, err3 = db.Query(`
 			SELECT *
-			FROM submissions
+			FROM previousmark.submissions
 			WHERE "user" = $1 AND benchmark = $2`, idI, idJ)
 		}
 	} else {
 		if id == "" && bid == "" {
 			rows, err3 = db.Query(`
 			SELECT *
-			FROM submissions
+			FROM previousmark.submissions
 			WHERE verified = TRUE`)
 		} else if id == "" {
 			if err != nil {
@@ -542,7 +544,7 @@ func dbQueryGetSubmissions(db *sql.DB, id string, bid string, showAll bool) (sub
 			}
 			rows, err3 = db.Query(`
 			SELECT *
-			FROM submissions
+			FROM previousmark.submissions
 			WHERE benchmark = $1 AND verified = TRUE`, idJ)
 		} else if bid == "" {
 			if err2 != nil {
@@ -550,7 +552,7 @@ func dbQueryGetSubmissions(db *sql.DB, id string, bid string, showAll bool) (sub
 			}
 			rows, err3 = db.Query(`
 			SELECT *
-			FROM submissions
+			FROM previousmark.submissions
 			WHERE "user" = $1 AND verified = TRUE`, idI)
 		} else {
 			if err != nil || err2 != nil {
@@ -558,7 +560,7 @@ func dbQueryGetSubmissions(db *sql.DB, id string, bid string, showAll bool) (sub
 			}
 			rows, err3 = db.Query(`
 			SELECT *
-			FROM submissions
+			FROM previousmark.submissions
 			WHERE "user" = $1 AND benchmark = $2 AND verified = TRUE`, idI, idJ)
 		}
 	}
@@ -573,12 +575,12 @@ func dbQueryGetSubmissions(db *sql.DB, id string, bid string, showAll bool) (sub
 		if err == nil {
 			err = db.QueryRow(`
 			SELECT *
-			FROM processors
+			FROM previousmark.processors
 			WHERE pid = $1`, p).Scan(&s.Processor.PID, &s.Processor.Model, &s.Processor.Lineup)
 			if err != nil {
 				err = db.QueryRow(`
 				SELECT manufacturer
-				FROM lineups
+				FROM previousmark.lineups
 				WHERE title = $1`, s.Processor.Lineup).Scan(&s.Processor.Manufacturer)
 			}
 		}
@@ -587,12 +589,12 @@ func dbQueryGetSubmissions(db *sql.DB, id string, bid string, showAll bool) (sub
 		if err == nil {
 			err = db.QueryRow(`
 			SELECT *
-			FROM memories
+			FROM previousmark.memories
 			WHERE mid = $1`, m).Scan(&s.Memory.MID, &s.Memory.Model, &s.Memory.Lineup, &s.Memory.Capacity, &s.Memory.Generation)
 			if err != nil {
 				err = db.QueryRow(`
 				SELECT manufacturer
-				FROM lineups
+				FROM previousmark.lineups
 				WHERE title = $1`, s.Memory.Lineup).Scan(&s.Memory.Manufacturer)
 			}
 		}
@@ -620,7 +622,7 @@ func dbQueryGetSubmission(db *sql.DB, sid string) (submission, msg, error) {
 	}
 	row, err2 := db.Query(`
 		SELECT *
-		FROM submissions
+		FROM previousmark.submissions
 		WHERE sid = $1`, idI)
 	if row == nil || err2 != nil {
 		return submission{}, notFound404ErrMsg, nil
@@ -666,13 +668,13 @@ func dbQueryPostSubmission(db *sql.DB, result float32, processor string, memory 
 	}
 	var lastInsertId int
 	err = db.QueryRow(`
-		INSERT INTO submissions(result, processor, memory, memcount, url, benchmark, "user", screenshot)
+		INSERT INTO previousmark.submissions(result, processor, memory, memcount, url, benchmark, "user", screenshot)
 		VALUES($1, $2, $3, $4, $5, $6, $7, $8)
 		RETURNING sid`, result, idK, idL, idM, url, idI, idJ, screenshot).Scan(&lastInsertId)
 	if err != nil {
 		return submission{}, conflict409ErrMsg, err
 	}
-	return dbQueryGetSubmission(db, string(rune(lastInsertId)))
+	return dbQueryGetSubmission(db, strconv.Itoa(lastInsertId))
 }
 
 func dbQueryUpdateSubmission(db *sql.DB, sid string, isVerified bool) (submission, msg, error) {
@@ -686,7 +688,7 @@ func dbQueryUpdateSubmission(db *sql.DB, sid string, isVerified bool) (submissio
 	}
 	var s submission
 	err = db.QueryRow(`
-	UPDATE submissions
+	UPDATE previousmark.submissions
 	SET verified = $1
 	WHERE sid = $2
 	RETURNING sid`, isVerified, idI).Scan(&s.SID)
@@ -703,7 +705,7 @@ func dbQueryDeleteSubmission(db *sql.DB, sid string) msg {
 	}
 	_, err = db.Exec(`
 	DELETE
-	FROM submissions
+	FROM previousmark.submissions
 	WHERE sid = $1`, idI)
 	if err != nil {
 		return notFound404ErrMsg
@@ -723,7 +725,7 @@ func dbQueryGetSubmissionComments(db *sql.DB, sid string) (submissionComments, m
 	}
 	rows, err = db.Query(`
 		SELECT *
-		FROM subcomms
+		FROM previousmark.subcomms
 		WHERE submission = $1`, idI)
 	var scs submissionComments
 	for rows.Next() {
@@ -758,12 +760,12 @@ func dbQueryGetSubmissionComment(db *sql.DB, sid string, cid string) (submission
 	if err != nil {
 		row, err3 = db.Query(`
 		SELECT *
-		FROM subcomms
+		FROM previousmark.subcomms
 		WHERE scid = $1`, idJ)
 	} else {
 		row, err3 = db.Query(`
 		SELECT *
-		FROM subcomms
+		FROM previousmark.subcomms
 		WHERE submission = $1 AND scid = $2`, idI, idJ)
 	}
 	if row == nil || err3 != nil {
@@ -808,13 +810,13 @@ func dbQueryPostSubmissionComment(db *sql.DB, sid string, body string, id string
 	}
 	var lastInsertId int
 	err = db.QueryRow(`
-		INSERT INTO subcomms(body, submission, "user")
+		INSERT INTO previousmark.subcomms(body, submission, "user")
 		VALUES($1, $2, $3)
 		RETURNING scid`, body, idK, idJ).Scan(&lastInsertId)
 	if err != nil {
 		return submissionComment{}, notFound404ErrMsg, nil
 	}
-	return dbQueryGetSubmissionComment(db, sid, string(rune(lastInsertId)))
+	return dbQueryGetSubmissionComment(db, sid, strconv.Itoa(lastInsertId))
 }
 
 func dbQueryDeleteSubmissionComment(db *sql.DB, sid string, cid string) error {
@@ -835,7 +837,7 @@ func dbQueryDeleteSubmissionComment(db *sql.DB, sid string, cid string) error {
 	}
 	_, err = db.Exec(`
 	DELETE
-	FROM subcomms
+	FROM previousmark.subcomms
 	WHERE scid = $1`, idJ)
 	if err != nil {
 		return err
@@ -849,11 +851,11 @@ func dbQueryGetUsers(db *sql.DB, showAll bool) (users, error) {
 	if showAll {
 		rows, err = db.Query(`
 			SELECT uid, nick, avatar, aboutme, aboutblog, verified, privileged, created
-			FROM users`)
+			FROM previousmark.users`)
 	} else {
 		rows, err = db.Query(`
 			SELECT uid, nick, avatar, aboutme, aboutblog, verified, privileged, created
-			FROM users
+			FROM previousmark.users
 			WHERE verified = TRUE`)
 	}
 	if rows == nil || err != nil {
@@ -874,24 +876,27 @@ func dbQueryGetUsers(db *sql.DB, showAll bool) (users, error) {
 func dbQueryGetUser(db *sql.DB, str string, isId bool) (user, msg, error) {
 	idI, err := strconv.Atoi(str)
 	if err != nil && isId {
+		log.Println(err)
 		return user{}, badReq400ErrMsg, err
 	}
 	var row *sql.Rows
 	if isId {
 		row, err = db.Query(`
 		SELECT uid, nick, avatar, aboutme, aboutblog, verified, privileged, created
-		FROM users
+		FROM previousmark.users
 		WHERE uid = $1`, idI)
 	} else {
 		row, err = db.Query(`
 		SELECT uid, nick, avatar, aboutme, aboutblog, verified, privileged, created
-		FROM users
+		FROM previousmark.users
 		WHERE nick = $1`, str)
 	}
 	if row == nil {
+		log.Println("empty")
 		return user{}, notFound404ErrMsg, nil
 	}
 	if err != nil {
+		log.Println(err)
 		return user{}, dbErr500ErrMsg, err
 	}
 	var u user
@@ -899,6 +904,7 @@ func dbQueryGetUser(db *sql.DB, str string, isId bool) (user, msg, error) {
 		err = row.Scan(&u.UID, &u.Nickname, &u.Avatar, &u.AboutMe, &u.AboutBlog, &u.IsVerified, &u.IsMod, &u.Created)
 	}
 	if err != nil {
+		log.Println(err)
 		return user{}, etcErr500ErrMsg, err
 	}
 	return u, msg{}, nil
@@ -909,16 +915,19 @@ func dbQueryPostUser(db *sql.DB, nickname string, email string, password string)
 	if err != nil {
 		return user{}, dbErr500ErrMsg, err
 	}
-	hash := []byte(saltify(password))
+	hash := saltify(password)
 	var lastInsertId int
 	err = db.QueryRow(`
-		INSERT INTO users(email, nick, password)
+		INSERT INTO previousmark.users(email, nick, nuke)
 		VALUES($1, $2, sha256($3))
-		RETURNING id`, email, nickname, hash).Scan(&lastInsertId)
+		RETURNING uid`, email, nickname, hash).Scan(&lastInsertId)
 	if err != nil {
+		log.Println(err)
 		return user{}, conflict409ErrMsg, err
+		//return user{}, msg{Body: err.Error()}, err
 	}
-	return dbQueryGetUser(db, string(rune(lastInsertId)), true)
+	log.Println(lastInsertId)
+	return dbQueryGetUser(db, strconv.Itoa(lastInsertId), true)
 }
 
 func dbQueryUpdateUser(db *sql.DB, id string, nick string, email string, avatar string, aboutMe string, aboutBlog string, isVerified bool) (user, msg, error) {
@@ -932,12 +941,12 @@ func dbQueryUpdateUser(db *sql.DB, id string, nick string, email string, avatar 
 	}
 	var uid int
 	err = db.QueryRow(`
-		UPDATE users
+		UPDATE previousmark.users
 		SET nick = $1, email = $2, avatar = $3, aboutme = $4, aboutblog = $5, verified = $6
-		WHERE id = $7
-		RETURNING id`, nick, email, avatar, aboutMe, aboutBlog, isVerified, idI).Scan(&uid)
+		WHERE uid = $7
+		RETURNING uid`, nick, email, avatar, aboutMe, aboutBlog, isVerified, idI).Scan(&uid)
 	if err != nil {
 		return user{}, dbErr500ErrMsg, err
 	}
-	return dbQueryGetUser(db, string(rune(uid)), true)
+	return dbQueryGetUser(db, strconv.Itoa(uid), true)
 }

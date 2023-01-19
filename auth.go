@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"fmt"
 	"github.com/golang-jwt/jwt"
+	"log"
 	"math/rand"
 	"strconv"
 	"strings"
@@ -150,7 +151,7 @@ func dbQueryIsMod(db *sql.DB, id string) bool {
 	var idI string
 	err = db.QueryRow(`
 	SELECT uid
-	FROM users
+	FROM previousmark.users
 	WHERE uid = $1 AND privileged = TRUE`, i).Scan(&idI)
 	if err != nil || idI != id {
 		return false
@@ -160,18 +161,19 @@ func dbQueryIsMod(db *sql.DB, id string) bool {
 
 func dbQueryLoginUser(nickname string, password string, db *sql.DB) (string, msg, error) {
 	var nickN string
-	var disposableP string
+	//var disposableP string
 	err := db.QueryRow(`
 	SELECT nick, nuke
-	FROM users
-	WHERE nick = $1 AND nuke = sha256($2)`, nickname, saltify(password)).Scan(&nickN, &disposableP)
+	FROM previousmark.users
+	WHERE nick = $1 AND nuke = sha256($2)`, nickname, saltify(password)).Scan(&nickN, Ignore)
 	if err != nil {
+		log.Println(err)
 		return "", dbErr500ErrMsg, err
 	}
 	if nickN != nickname {
 		return "", notAuth401ErrMsg, nil
 	}
-	userU, err2 := user{}, err // Placeholder
+	userU, _, err2 := dbQueryGetUser(db, nickname, false)
 	if err2 != nil {
 		return "", dbErr500ErrMsg, err2
 	}
@@ -186,7 +188,7 @@ func dbQueryNewPassword(id string, old string, new string, db *sql.DB) (string, 
 	}
 	i, _ := strconv.Atoi(u.UID)
 	err = db.QueryRow(`
-	UPDATE users
+	UPDATE previousmark.users
 	SET nuke = sha256($1), lastnuke = now()
 	WHERE uid = $2 AND nuke = sha256($3)
 	RETURNING uid`, old, i, new).Scan(Ignore)
@@ -196,10 +198,10 @@ func dbQueryNewPassword(id string, old string, new string, db *sql.DB) (string, 
 	return new, msg{}, nil
 }
 
-func saltify(password string) string {
+func saltify(password string) []byte {
 	// Pass to dbQueryLoginUser
 	s := sha256.Sum256([]byte(password))
 	s1 := string(s[:])
 	s1 = salt + s1[len(salt):]
-	return s1
+	return []byte(s1)
 }

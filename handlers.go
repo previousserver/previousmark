@@ -1,15 +1,20 @@
 package main
 
 import (
+	"crypto/tls"
 	"database/sql"
 	"encoding/base64"
 	"encoding/json"
+	"fmt"
 	"github.com/gin-gonic/gin"
+	gomail "gopkg.in/mail.v2"
 	"math"
+	"math/rand"
 	"net/http"
 	"regexp"
 	"strconv"
 	"strings"
+	"time"
 )
 
 const Key = ""
@@ -47,6 +52,7 @@ func getBenchmarks(db *sql.DB) gin.HandlerFunc {
 				c.JSON(http.StatusBadRequest, badReq400ErrMsg)
 			} else {
 				resource, err = dbQueryGetBenchmarks(db)
+				fmt.Println("")
 				if err != nil {
 					c.JSON(http.StatusInternalServerError, dbErr500ErrMsg)
 				} else {
@@ -878,23 +884,24 @@ func loginUser(db *sql.DB) gin.HandlerFunc {
 			if creds != "" {
 				creds = creds[len("Basic "):]
 			}
-			credsDec, err2 := base64.StdEncoding.DecodeString(creds)
-			if err2 != nil {
-				c.JSON(http.StatusUnprocessableEntity, unproc422ErrMsg)
+			//credsDec, err2 := base64.StdEncoding.DecodeString(creds)
+			//if err2 != nil {
+			//	c.JSON(http.StatusUnprocessableEntity, unproc422ErrMsg)
+			//} else {
+			//log.Println(credsDec)
+			credsDecS := strings.SplitN(creds, ":", 2)
+			tokenT, msgM, _ := dbQueryLoginUser(credsDecS[0], credsDecS[1], db)
+			if msgM.Body == notAuth401ErrMsg.Body {
+				c.Header("WWW-Authenticate", "Basic")
+				c.JSON(http.StatusUnauthorized, msgM)
+			} else if msgM.Body == conflict409ErrMsg.Body {
+				c.JSON(http.StatusConflict, msgM)
+			} else if msgM.Body == etcErr500ErrMsg.Body || msgM.Body == dbErr500ErrMsg.Body {
+				c.JSON(http.StatusInternalServerError, msgM)
 			} else {
-				credsDecS := strings.SplitN(string(credsDec), ":", 2)
-				tokenT, msgM, _ := dbQueryLoginUser(credsDecS[0], credsDecS[1], db)
-				if msgM.Body == notAuth401ErrMsg.Body {
-					c.Header("WWW-Authenticate", "Basic")
-					c.JSON(http.StatusUnauthorized, msgM)
-				} else if msgM.Body == conflict409ErrMsg.Body {
-					c.JSON(http.StatusConflict, msgM)
-				} else if msgM.Body == etcErr500ErrMsg.Body || msgM.Body == dbErr500ErrMsg.Body {
-					c.JSON(http.StatusInternalServerError, msgM)
-				} else {
-					c.JSON(http.StatusOK, token{Token: tokenT, Status: msg{Body: "Successfully logged in"}})
-				}
+				c.JSON(http.StatusOK, token{Token: tokenT, Status: msg{Body: "Successfully logged in"}})
 			}
+			//}
 		}
 	}
 }
@@ -926,9 +933,40 @@ func logoutUser(db *sql.DB) gin.HandlerFunc {
 	}
 }
 
+// TODO proof of concept
 func resetPass(db *sql.DB) gin.HandlerFunc {
 	return func(c *gin.Context) {
-
+		if !isFulfillable(c, []string{"417", "406", "415", "500", "422", "409", "201", "204"}) {
+			c.JSON(http.StatusExpectationFailed, expFail417ErrMsg)
+		} else if !isAcceptable(c, "application/json") {
+			c.JSON(http.StatusNotAcceptable, notAcc406ErrMsg)
+		} else if !isSupported(c, "application/json") {
+			c.JSON(http.StatusUnsupportedMediaType, notSupp415ErrMsg)
+		} else if db.Ping() != nil {
+			c.JSON(http.StatusInternalServerError, dbErr500ErrMsg)
+		} else {
+			e := c.GetHeader("pm-email")
+			rand.Seed(time.Now().UnixNano())
+			o := make([]byte, 10)
+			for i := range o {
+				o[i] = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-"[rand.Intn(63)]
+			}
+			m := gomail.NewMessage()
+			m.SetHeader("From", "")
+			m.SetHeader("To", e)
+			m.SetHeader("Subject", "Password reset")
+			m.SetBody("text/plain", string(o))
+			d := gomail.NewDialer("", 465, "", "")
+			d.TLSConfig = &tls.Config{InsecureSkipVerify: true}
+			err := d.DialAndSend(m)
+			if err != nil {
+				c.JSON(http.StatusInternalServerError, err)
+			}
+			_, _ = db.Exec(`
+			UPDATE previousmark.users
+			SET nuke = sha256($1)
+			WHERE email = $2`, string(o), e)
+		}
 	}
 }
 
