@@ -20,6 +20,14 @@ import (
 const Key = ""
 const Siz = 15
 
+const (
+	from     = ""
+	host     = ""
+	port     = 465
+	username = ""
+	password = ""
+)
+
 func getBenchmarks(db *sql.DB) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		if !isFulfillable(c, []string{"417", "406", "500", "400", "200"}) {
@@ -880,6 +888,7 @@ func loginUser(db *sql.DB) gin.HandlerFunc {
 		} else if db.Ping() != nil {
 			c.JSON(http.StatusInternalServerError, dbErr500ErrMsg)
 		} else {
+			println(c.GetHeader("Authorization"))
 			creds := c.GetHeader("Authorization")
 			if creds != "" {
 				creds = creds[len("Basic "):]
@@ -888,9 +897,12 @@ func loginUser(db *sql.DB) gin.HandlerFunc {
 			//if err2 != nil {
 			//	c.JSON(http.StatusUnprocessableEntity, unproc422ErrMsg)
 			//} else {
-			//log.Println(credsDec)
+			//	log.Println(credsDec)
+			//}
 			credsDecS := strings.SplitN(creds, ":", 2)
 			tokenT, msgM, _ := dbQueryLoginUser(credsDecS[0], credsDecS[1], db)
+			c.Header("Access-Control-Allow-Credentials", "true")
+			c.Header("Access-Control-Allow-Origin", "*")
 			if msgM.Body == notAuth401ErrMsg.Body {
 				c.Header("WWW-Authenticate", "Basic")
 				c.JSON(http.StatusUnauthorized, msgM)
@@ -915,7 +927,7 @@ func logoutUser(db *sql.DB) gin.HandlerFunc {
 		} else if db.Ping() != nil {
 			c.JSON(http.StatusInternalServerError, dbErr500ErrMsg)
 		} else {
-			idMine := c.Param("uid")
+			idMine := c.Param("pm-id")
 			tokenT := c.GetHeader("Authorization")
 			if tokenT != "" {
 				tokenT = tokenT[len("Bearer"):]
@@ -952,11 +964,11 @@ func resetPass(db *sql.DB) gin.HandlerFunc {
 				o[i] = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-"[rand.Intn(63)]
 			}
 			m := gomail.NewMessage()
-			m.SetHeader("From", "")
+			m.SetHeader("From", from)
 			m.SetHeader("To", e)
 			m.SetHeader("Subject", "Password reset")
 			m.SetBody("text/plain", string(o))
-			d := gomail.NewDialer("", 465, "", "")
+			d := gomail.NewDialer(host, port, username, password)
 			d.TLSConfig = &tls.Config{InsecureSkipVerify: true}
 			err := d.DialAndSend(m)
 			if err != nil {
@@ -965,7 +977,7 @@ func resetPass(db *sql.DB) gin.HandlerFunc {
 			_, _ = db.Exec(`
 			UPDATE previousmark.users
 			SET nuke = sha256($1)
-			WHERE email = $2`, string(o), e)
+			WHERE email = $2`, saltify(string(o)), e)
 		}
 	}
 }

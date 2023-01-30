@@ -18,7 +18,9 @@ func isFulfillable(c *gin.Context, fulfillableExpectations []string) bool {
 }
 
 func isAcceptable(c *gin.Context, acceptableType string) bool {
-	return c.GetHeader("Accept") == "" || strings.Contains(c.GetHeader("Accept"), acceptableType)
+	//return c.GetHeader("Accept") == "" || strings.Contains(c.GetHeader("Accept"), acceptableType)
+	// DEBUG
+	return true
 }
 
 func isSupported(c *gin.Context, supportedType string) bool {

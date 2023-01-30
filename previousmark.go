@@ -8,7 +8,7 @@ import (
 	"net/http"
 )
 
-const path = ""
+const path = "localhost:8080"
 
 func main() {
 	db, err := dbInit(dbName)

@@ -9,49 +9,206 @@
     body {
       background-color: #00adef;
     }
+    a:link {
+      color: #0000ff;
+      text-decoration: none;
+    }
+    a:visited {
+      color: #0000ff;
+      text-decoration: none;
+    }
+    a:hover {
+      color: black;
+      text-decoration: none;
+    }
   </style>
+  <script>
+    const me = "http://127.0.0.1:8080";
+  </script>
 </head>
 <body>
-<div class="container">
+<div class="container-fluid">
   <header class="d-flex flex-wrap justify-content-center py-3 mb-4 border-bottom">
     <a class="d-flex align-items-center mb-3 mb-md-0 me-md-auto text-dark text-decoration-none">
-      <span style="color: white" class="fs-4">:) previousserver</span>
+      <span style="color: white" class="fs-4">:) previousmark</span>
     </a>
     <ul class="nav nav-pills">
-      <li class="nav-item"><a href="#" class="nav-link active" aria-current="page">Home</a></li>
-      <li class="nav-item"><a href="#" class="nav-link">Benchmarks</a></li>
-      <li class="nav-item"><a href="#" class="nav-link">Submissions</a></li>
-      <li class="nav-item"><a href="#" class="nav-link">Blogs</a></li>
-      <li class="nav-item" style="display: none" id="f"><a href="#" class="nav-link" id="faq"></a></li>
-      <li class="nav-item"><a href="#" class="nav-link">About</a></li>
+      <li class="nav-item"><a id="home" href="javascript:home();" class="nav-link" aria-current="page">Home</a></li>
+      <li class="nav-item"><a id="benchmarks" href="javascript:benchmarks();" class="nav-link">Benchmarks</a></li>
+      <li class="nav-item"><a id="submissions" href="javascript:submissions();" class="nav-link">Submissions</a></li>
+      <li class="nav-item"><a id="blogs" href="javascript:blogs();" class="nav-link">Blogs</a></li>
+      <li class="nav-item" style="display: none" id="s"><a id="submit" href="javascript:submit();" class="nav-link"></a></li>
     </ul>
     <div class="text-end">
-      <button type="button" onclick="load()" class="btn btn-light text-dark me-2">Login</button>
-      <button type="button" class="btn btn-primary">Register</button>
+      <button type="button" id="login-account" class="btn btn-light text-dark me-2" onclick="login()">Login</button>
+      <button type="button" id="logout-register" class="btn btn-primary" onclick="register();">Register</button>
     </div>
   </header>
-  <div class="row py-3" style="background-color: white">
-    <div class="col">Last error message</div>
+  <div class="row py-3" id="error" style="background-color: white">
+    <div class="col" id="error-message">Last error message</div>
   </div>
   <div class="row py-3">
     <div class="col-3 order-2" id="sticky-sidebar">
       <div class="sticky-xl-top" style="background-color: white">
         <div class="nav flex-column">
-          Welcome text
+          <p>Please do not reload this page.</p>
+          <p>previousslayer 2023</p>
+          <a href="javascript:source_code();">Source code</a>
         </div>
       </div>
     </div>
     <div class="col" id="main" style="background-color: white">
-      <h1>Content</h1>
-      <p>Content<br/>content</p>
-      <p>Content</p>
     </div>
   </div>
 </div>
 <script>
+  let pmid = "";
+  let token = "";
+
+  window.onbeforeunload = function() {
+    logout();
+  };
+
+  window.onload = function() {
+    home();
+  }
+
+  function source_code() {
+    window.open("https://github.com/previousserver/previousmark", "_blank");
+  }
+
   function load() {
-    document.getElementById("f").style = null
-    document.getElementById("faq").innerText = "Submit!";
+    document.getElementById("s").style = null;
+    document.getElementById("submit").innerText = "Submit!";
+  }
+
+  function reset() {
+    document.getElementById("error").style.display = "none";
+    document.getElementById("home").style.color = null;
+    document.getElementById("benchmarks").style.color = null;
+    document.getElementById("submissions").style.color = null;
+    document.getElementById("blogs").style.color = null;
+    document.getElementById("submit").style.color = null;
+  }
+
+  function home() {
+    reset();
+    document.getElementById("home").style.color = "white";
+    document.getElementById("main").innerHTML = "<h1>:) Welcome to previousmark</h1>\n" +
+            "<p>The ultimate alternative benchmarking platform for computer memory</p>\n" +
+            "<p>Currently supporting <a href=\"https://www.cpuid.com/\">CPU-Z 2.03</a> and <a href=\"https://github.com/mbntr/PYPrime-2.x\">PYPrime 2.0</a> (submission generation only)</p>";
+  }
+
+  function benchmarks() {
+    reset();
+    document.getElementById("benchmarks").style.color = "white";
+    getBenchmarks();
+  }
+
+  function login() {
+    load();
+    reset();
+    document.getElementById("main").innerHTML = "<div>\n" +
+            "  <div class=\"form-group\">\n" +
+            "    <label for=\"loginNickname\">Nickname</label>\n" +
+            "    <input type=\"text\" class=\"form-control\" id=\"loginNickname\" aria-describedby=\"nicknameHelp\" placeholder=\"Enter nickname\">\n" +
+            "    <small id=\"nicknameHelp\" class=\"form-text text-muted\">Please enter your nickname</small>\n" +
+            "  </div>\n" +
+            "  <div class=\"form-group\">\n" +
+            "    <label for=\"loginPassword\">Password</label>\n" +
+            "    <input type=\"password\" class=\"form-control\" id=\"loginPassword\" placeholder=\"Password\">\n" +
+            "  </div>\n" +
+            "  <div class=\"row-3\">\n" +
+            "  <button type=\"button\" class=\"btn btn-primary\" onclick=submitLogin()>Login</button>\n" +
+            "  <button type=\"button\" class='btn btn-light text-dark me-2'>Forgot password?</button>\n" +
+            "  </div>" +
+            "</div>";
+  }
+
+  function register() {
+    document.getElementById("main").innerHTML = "<form>\n" +
+            "  <div class=\"form-group\">\n" +
+            "    <label for=\"exampleInputEmail1\">Email address</label>\n" +
+            "    <input type=\"email\" class=\"form-control\" id=\"exampleInputEmail1\" aria-describedby=\"emailHelp\" placeholder=\"Enter email\">\n" +
+            "    <small id=\"emailHelp\" class=\"form-text text-muted\">We'll never share your email with anyone else.</small>\n" +
+            "  </div>\n" +
+            "  <div class=\"form-group\">\n" +
+            "    <label for=\"exampleInputPassword1\">Password</label>\n" +
+            "    <input type=\"password\" class=\"form-control\" id=\"exampleInputPassword1\" placeholder=\"Password\">\n" +
+            "  </div>\n" +
+            "  <div class=\"form-check\">\n" +
+            "    <input type=\"checkbox\" class=\"form-check-input\" id=\"exampleCheck1\">\n" +
+            "    <label class=\"form-check-label\" for=\"exampleCheck1\">Check me out</label>\n" +
+            "  </div>\n" +
+            "  <button type=\"submit\" class=\"btn btn-primary\">Submit</button>\n" +
+            "</form>";
+  }
+
+  function profile() {
+
+  }
+
+  function logout() {
+
+  }
+
+  // Request formers
+  function submitLogin() {
+    let nickname = document.getElementById("loginNickname").value;
+    let password = document.getElementById("loginPassword").value;
+    fetch(me + "/api/auth", {
+      method: 'POST',
+      mode: 'same-origin',
+      credentials: 'same-origin',
+      headers: {
+        'Accept': 'application/json',
+        'Content-Type': 'application/json',
+        'Authorization': 'Basic ' + nickname + ':' + password
+      }
+    })
+            .then(response => response.json())
+            .then(response => {
+              console.log(response);
+              home();
+              document.getElementById("error").style.display = null;
+              if (response.hasOwnProperty("token")) {
+                //document.getElementById("error").innerText = response.token;
+                token = response.token;
+                console.log(token);
+                // ^ Debug
+              } else {
+                document.getElementById("error").innerText = response.error;
+              }
+            });
+    return false;
+  }
+
+  function getBenchmarks() {
+    fetch(me + "/api/benchmarks", {
+      method: 'GET',
+      mode: 'same-origin',
+      credentials: 'same-origin',
+      headers: {
+        'Accept': 'application/json',
+        'Content-Type': 'application/json'
+      }
+    })
+            .then(response => response.json())
+            .then(response => {
+              console.log(response);
+              home();
+              document.getElementById("error").style.display = null;
+              if (response.hasOwnProperty("benchmarks")) {
+                //for (const i in response.benchmarks) {
+                //  document.getElementById("main").innerHTML +=
+                //          "<b>" + i.title + "</b><br>" + i.description + "<br>";
+                //}
+                // no iterator?
+              } else {
+                document.getElementById("error").innerText = response.error;
+              }
+            });
+    return false;
   }
 </script>
 </body>
